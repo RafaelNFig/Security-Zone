@@ -6,7 +6,8 @@ Cada carta representa uma ameaça cibernética, uma defesa tecnológica ou uma m
 
 ## 🛠️ Tecnologias Utilizadas
 
-[![Techonologies](https://skillicons.dev/icons?i=react,mysql,js,html,css,figma,git,vscode,vite)](https://skillicons.dev)
+[![Technologies](https://skillicons.dev/icons?i=react,js,html,css,tailwind,nodejs,express,mysql,prisma,figma,git,vscode,vite,websocket)](https://skillicons.dev)
+
 
 ## 👍 Benefícios do Jogo
 
