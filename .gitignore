@@ -1,0 +1,32 @@
+# Arquivos de Configuração Secreta (CRUCIAL!)
+.env
+.env.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Diretórios de Módulo (Dependências)
+node_modules
+backend/node_modules  # Adicionado: Ignora as dependências do backend
+
+# Arquivos de Build/Compilação do Frontend (Vite)
+dist
+dist-ssr
+*.local # Ignora arquivos .local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
