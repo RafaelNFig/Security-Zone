@@ -6,8 +6,15 @@ Cada carta representa uma ameaça cibernética, uma defesa tecnológica ou uma m
 
 ## 🛠️ Tecnologias Utilizadas
 
-[![Technologies](https://skillicons.dev/icons?i=react,js,html,css,tailwind,nodejs,express,mysql,prisma,figma,git,vscode,vite,websocket)](https://skillicons.dev)
+[![Technologies](https://skillicons.dev/icons?i=react,js,html,css,tailwind,nodejs,express,mysql,prisma,figma,git,vscode,vite,firebase,websocket)](https://skillicons.dev)
 
+- **React + Vite** – Frontend moderno e rápido  
+- **Tailwind CSS** – Estilização responsiva e customizada  
+- **Node.js + Express** – Backend para lógica do jogo (opcional)  
+- **Firebase** – Banco de dados e funcionalidades distribuídas  
+- **MySQL + Prisma** – Persistência de dados estruturada  
+- **Git & VSCode** – Versionamento e desenvolvimento  
+- **Figma** – Design e prototipagem  
 
 ## 👍 Benefícios do Jogo
 
@@ -25,5 +32,5 @@ Este projeto está licenciado sob a Licença MIT. Consulte o arquivo [📜 LICEN
 
 ## 👥 Devs
 
-- Camila Lídia
+- Camila Lídia  
 - Rafael José
