@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ModalAuth from "./modalAuth.jsx";
 // useState para gerenciar o estado do menu
 
 export default function Navbar() {
