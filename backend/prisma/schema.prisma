@@ -1,15 +1,164 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// backend/prisma/schema.prisma
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
-generator client {
-  provider = "prisma-client-js"
-  output   = "../generated/prisma"
-}
-
+// 1. Configuração do Banco de Dados
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+// 2. Configuração do Cliente Node.js
+generator client {
+  provider = "prisma-client-js"
+}
+
+// =========================================================
+// MODELOS DE DADOS - SECURITY ZONE
+// =========================================================
+
+
+// 1. Tabela PLAYER (Jogadores)
+model Player {
+  // Campos de Identificação e Segurança
+  PL_ID               Int       @id @default(autoincrement()) @map("PL_ID")
+  PL_NAME             String    @unique @db.VarChar(45) @map("PL_NAME")
+  PL_EMAIL            String    @unique @db.VarChar(100) @map("PL_EMAIL")
+  PL_PASSWORD_HASH    String    @db.VarChar(255) @map("PL_PASSWORD_HASH")
+
+  // Campos de Progresso e Economia
+  PL_COINS            Int       @default(0) @map("PL_COINS")
+  PL_GEMS             Int       @default(0) @map("PL_GEMS") 
+  PL_LEVEL            Int       @default(1) @map("PL_LEVEL")
+  PL_AVATAR           String?   @db.VarChar(255) @map("PL_AVATAR")
+  PL_LIFE             Int       @default(100) @map("PL_LIFE") 
+
+  // Metadados
+  PL_Created_at       DateTime  @default(now()) @map("PL_Created_at")
+
+  // Relacionamentos: Um jogador pode ter muitos...
+  decks               Deck[]
+  inventory           PlayerCard[]
+  matchesParticipated MatchPlayer[]
+  matchesWon          Match[]       @relation("MatchWinner")
+
+  @@map("PLAYER") 
+}
+
+
+// 2. Tabela CARDS (Catálogo de Cartas)
+model Card {
+  CD_ID               Int       @id @default(autoincrement()) @map("CD_ID")
+  CD_NAME             String    @unique @db.VarChar(100) @map("CD_NAME")
+  CD_DESCRIPTION      String    @db.VarChar(255) @map("CD_DESCRIPTION") 
+  CD_TYPE             String    @db.VarChar(50) @map("CD_TYPE") 
+  CD_COST             Int       @map("CD_COST")
+  CD_LIFE             Int?      @map("CD_LIFE")
+  CD_ATTACK           Int?      @map("CD_ATTACK")
+  CD_DEFENSE          Int?      @map("CD_DEFENSE")
+  CD_IMAGE            String?   @db.VarChar(255) @map("CD_IMAGE")
+
+  // Relacionamentos
+  inInventories       PlayerCard[]
+  inDecks             DeckCard[]
+
+  @@map("CARDS")
+}
+
+
+// 3. Tabela PLAYER_CARD (Inventário - Chave Composta)
+model PlayerCard {
+  // Chaves compostas
+  PLAYER_PL_ID        Int       @map("PLAYER_PL_ID")
+  CARDS_CD_ID         Int       @map("CARDS_CD_ID")
+
+  // Relacionamentos (FOREIGN KEYS)
+  player              Player    @relation(fields: [PLAYER_PL_ID], references: [PL_ID])
+  card                Card      @relation(fields: [CARDS_CD_ID], references: [CD_ID])
+
+  // Dados do inventário
+  PL_CD_QUANTITY      Int       @map("PL_CD_QUANTITY")
+
+  // CHAVE PRIMÁRIA COMPOSTA
+  @@id([PLAYER_PL_ID, CARDS_CD_ID])
+  @@map("PLAYER_CARD")
+}
+
+
+// 4. Tabela DECK (Definição dos Decks do Jogador)
+model Deck {
+  DECK_ID             Int       @id @default(autoincrement()) @map("DECK_ID")
+  DECK_NAME           String    @db.VarChar(100) @map("DECK_NAME")
+  DECK_IS_ACTIVE      Boolean   @default(false) @map("DECK_IS_ACTIVE") 
+
+  // Chave estrangeira para o Dono
+  PLAYER_PL_ID        Int       @map("PLAYER_PL_ID")
+  player              Player    @relation(fields: [PLAYER_PL_ID], references: [PL_ID])
+
+  DECK_CREATED_AT     DateTime  @default(now()) @map("DECK_CREATED_AT")
+
+  // Relacionamentos
+  cardsInDeck         DeckCard[]
+  matchesUsedIn       MatchPlayer[] 
+
+  @@map("DECK")
+}
+
+
+// 5. Tabela DECK_CARD (Conteúdo do Deck - Chave Composta)
+model DeckCard {
+  // Chaves compostas
+  DECK_ID             Int       @map("DECK_ID")
+  CARDS_CD_ID         Int       @map("CARDS_CD_ID")
+
+  // Relacionamentos
+  deck                Deck      @relation(fields: [DECK_ID], references: [DECK_ID])
+  card                Card      @relation(fields: [CARDS_CD_ID], references: [CD_ID])
+
+  // Dados do deck
+  DECK_CD_QUANTITY    Int       @map("DECK_CD_QUANTITY")
+
+  // CHAVE PRIMÁRIA COMPOSTA
+  @@id([DECK_ID, CARDS_CD_ID])
+  @@map("DECK_CARD")
+}
+
+
+// 6. Tabela MATCH (Registro de Partidas)
+model Match {
+  MATCH_ID            Int       @id @default(autoincrement()) @map("MT_ID")
+  MT_START_TIME       DateTime  @default(now()) @map("MT_START_TIME")
+  MT_END_TIME         DateTime? @map("MT_END_TIME") 
+  MT_TYPE             String    @db.VarChar(50) @map("MT_TYPE")
+  
+  // Vencedor (FK para Player)
+  MT_WINNER_ID        Int?      @map("MT_WINNER_ID") 
+  winner              Player?   @relation("MatchWinner", fields: [MT_WINNER_ID], references: [PL_ID])
+
+  // Relacionamento com participantes
+  participants        MatchPlayer[] 
+
+  @@map("MATCH")
+}
+
+
+// 7. Tabela MATCH_PLAYER (Participantes da Partida - Chave Composta)
+model MatchPlayer {
+  // Chaves compostas
+  MATCH_ID            Int       @map("MATCH_ID")
+  PLAYER_ID           Int       @map("PLAYER_ID")
+
+  // Relacionamentos - CORRIGIDO: references: [MATCH_ID]
+  match               Match     @relation(fields: [MATCH_ID], references: [MATCH_ID]) 
+  player              Player    @relation(fields: [PLAYER_ID], references: [PL_ID])
+
+  // Relacionamento do Deck usado
+  DECK_USED_ID        Int       @map("DECK_USED_ID")
+  deckUsed            Deck      @relation(fields: [DECK_USED_ID], references: [DECK_ID])
+
+  // Dados da performance na partida
+  MT_PL_FINAL_LIFE    Int       @map("MT_PL_FINAL_LIFE")
+  MT_PL_IS_WINNER     Boolean   @map("MT_PL_IS_WINNER")
+
+  // CHAVE PRIMÁRIA COMPOSTA
+  @@id([MATCH_ID, PLAYER_ID])
+  @@map("MATCH_PLAYER")
 }
