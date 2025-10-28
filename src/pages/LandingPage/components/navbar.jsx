@@ -20,8 +20,8 @@ export default function Navbar() {
         
         {/* Menu Padrão (Desktop) */}
         <ul className="hidden md:flex gap-8">
-          <li><a href="#Login" className="hover:text-cyan-400 transition">Login</a></li>
-          <li><a href="#cadastro" className="hover:text-cyan-400 transition">Cadastro</a></li>
+          <li><a href=".pages/Login/login.jsx" className="hover:text-cyan-400 transition">Login</a></li>
+          <li><a href=".pages/Register/register.jsx" className="hover:text-cyan-400 transition">Cadastro</a></li>
         </ul>
         
         {/* 3. Botão Hamburguer (Mobile) - Adiciona o onClick */}
@@ -41,14 +41,14 @@ export default function Navbar() {
       >
         <ul className="flex flex-col items-center py-4 space-y-3">
           <li><a 
-            href="#Login" 
+            href=".pages/Login/login.jsx" 
             className="block py-2 hover:text-cyan-400 transition"
             onClick={toggleMenu} // Fecha o menu ao clicar em um link
           >
             Login
           </a></li>
           <li><a 
-            href="#cadastro" 
+            href=".pages/Register/register.jsx" 
             className="block py-2 hover:text-cyan-400 transition"
             onClick={toggleMenu} // Fecha o menu ao clicar em um link
           >
