@@ -1,28 +1,19 @@
 import React from "react";
-// Importe as ferramentas de roteamento
-import { Routes, Route } from 'react-router-dom';
-// Importe a LandingPage
-import LandingPage from './pages/LandingPage/landingpage.jsx'; 
-// Não precisamos do Link aqui, pois não haverá navegação nesta tela
+import { Routes, Route } from "react-router-dom";
+import LandingPage from "./pages/LandingPage/landingpage.jsx";
+import Login from "./pages/Login/login.jsx";
+import Register from "./pages/Register/register.jsx";
 
 function App() {
   return (
-    // O div principal deve envolver apenas a lógica de roteamento agora
-    <div className="flex items-center justify-center min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-gray-900 text-white">
       <Routes>
-        {/*
-          Esta é a mudança chave:
-          A rota principal (path="/") agora renderiza o seu componente <LandingPage />.
-        */}
-        <Route 
-          path="/" 
-          element={<LandingPage />} 
-        />
-        
-        {/* Se você ainda precisar da tela de Introdução (IntroScreen) com o botão,
-          você pode mapeá-la para outra rota, como "/intro". 
-          (Eu a removi para manter o foco na LandingPage inicial).
-        */}
+        {/* Página inicial */}
+        <Route path="/" element={<LandingPage />} />
+
+        {/* Páginas de autenticação */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
       </Routes>
     </div>
   );
