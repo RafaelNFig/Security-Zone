@@ -1,7 +1,7 @@
 // backend/src/server.js
+/* eslint-env node */
 
-// CARREGAMENTO DO DOTENV: Esta é a sintaxe oficial para Módulos ES
-// que garante que as variáveis de ambiente sejam carregadas no 'process.env'.
+// CARREGAMENTO DO DOTENV
 import 'dotenv/config'; 
 
 import express from 'express';
@@ -10,7 +10,8 @@ import playerRoutes from './routes/playerRoutes.js';
 
 // Inicializa o aplicativo Express
 const app = express();
-// Lê a porta do arquivo .env (process.env.PORT)
+
+// Lê a porta do arquivo .env
 const PORT = process.env.PORT || 3000; 
 
 // MIDDLEWARES ESSENCIAIS
@@ -23,15 +24,12 @@ app.use(express.json());
 
 // 3. ROTEAMENTO
 // Define o ponto de entrada principal para as rotas de jogador
-// Endpoint final de registro: POST /api/player/register
 app.use('/api/player', playerRoutes);
-
 
 // Rota de Teste de Saúde do Servidor
 app.get('/', (req, res) => {
   res.send('Servidor Express rodando. A API de jogo está ativa!');
 });
-
 
 // INICIALIZAÇÃO DO SERVIDOR
 app.listen(PORT, () => {

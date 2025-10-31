@@ -1,16 +1,26 @@
 // backend/src/routes/playerRoutes.js
 
 import { Router } from 'express';
-// Certifique-se de que o playerController.js existe e tem o export registerPlayer
-import { registerPlayer } from '../controllers/playerController.js'; 
+import { 
+  registerPlayer, 
+  loginPlayer, 
+  getPlayerProfile,
+  updatePlayerProfile,
+  changePassword,
+  getPlayerStats
+} from '../controllers/playerController.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
-// Rota POST para o registro de novos jogadores
-// Endpoint: POST /api/player/register
+// Rotas públicas
 router.post('/register', registerPlayer);
+router.post('/login', loginPlayer);
 
-// Futuramente, adicionaremos a rota de login aqui:
-// router.post('/login', loginPlayer);
+// Rotas protegidas (requerem token JWT)
+router.get('/profile', protect, getPlayerProfile);
+router.put('/profile', protect, updatePlayerProfile);
+router.put('/change-password', protect, changePassword);
+router.get('/stats', protect, getPlayerStats);
 
 export default router;
