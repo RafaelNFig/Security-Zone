@@ -1,61 +1,59 @@
 import React, { useState } from 'react';
-// useState para gerenciar o estado do menu
+import ModalAuth from "./modalAuth"; // Importe o modal
 
 export default function Navbar() {
-  // 1. Define o estado inicial do menu (fechado)
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false); // Estado do modal aqui
 
-  // 2. Função para alternar o estado: de aberto para fechado e vice-versa
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
   return (
-    <nav className="fixed top-0 left-0 w-full bg-slate-900/80 backdrop-blur-md border-b border-slate-700 z-50">
-      
-      {/* Container Principal */}
-      <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+    <>
+      <nav className="fixed top-0 left-0 w-full bg-slate-900/80 backdrop-blur-md border-b border-slate-700 z-40">
         
-        <h1 className="text-2xl font-bold text-cyan-400">Security Zone</h1>
-        
-        {/* Menu Padrão (Desktop) */}
-        <ul className="hidden md:flex gap-8">
-          <li><a href=".pages/Login/login.jsx" className="hover:text-cyan-400 transition">Login</a></li>
-          <li><a href=".pages/Register/register.jsx" className="hover:text-cyan-400 transition">Cadastro</a></li>
-        </ul>
-        
-        {/* 3. Botão Hamburguer (Mobile) - Adiciona o onClick */}
-        <button 
-          onClick={toggleMenu} 
-          className="md:hidden text-cyan-400 text-1xl focus:outline-none"
-          // Mude o ícone com base no estado
-        >
-          {isMenuOpen ? '✕' : '☰'} 
-        </button>
-      </div>
+        {/* Container Principal */}
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+          
+          <h1 className="text-2xl font-bold text-cyan-400">Security Zone</h1>
+          
+          {/* Menu Padrão (Desktop) - EXATAMENTE IGUAL AO GameEx */}
+          <div className="hidden md:flex gap-8">
+            <button
+              onClick={() => setIsModalOpen(true)} // Direto igual no GameEx
+              className="px-6 py-3 rounded-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-extrabold uppercase tracking-wider shadow-lg shadow-yellow-500/30 hover:scale-105 transition-transform"
+            >
+              Jogar Agora 🎮
+            </button>
+          </div>
+          
+          {/* Botão Hamburguer (Mobile) */}
+          <button 
+            onClick={toggleMenu} 
+            className="md:hidden text-cyan-400 text-2xl focus:outline-none"
+          >
+            {isMenuOpen ? '✕' : '☰'} 
+          </button>
+        </div>
 
-      {/* 4. Menu Mobile (Aparece/Desaparece com o estado) */}
-      <div 
-        // Usa o estado isMenuOpen para aplicar classes de exibição
-        className={`md:hidden ${isMenuOpen ? 'block' : 'hidden'} bg-slate-900 border-t border-slate-800`}
-      >
-        <ul className="flex flex-col items-center py-4 space-y-3">
-          <li><a 
-            href=".pages/Login/login.jsx" 
-            className="block py-2 hover:text-cyan-400 transition"
-            onClick={toggleMenu} // Fecha o menu ao clicar em um link
-          >
-            Login
-          </a></li>
-          <li><a 
-            href=".pages/Register/register.jsx" 
-            className="block py-2 hover:text-cyan-400 transition"
-            onClick={toggleMenu} // Fecha o menu ao clicar em um link
-          >
-            Cadastro
-          </a></li>
-        </ul>
-      </div>
-    </nav>
+        {/* Menu Mobile */}
+        <div 
+          className={`md:hidden ${isMenuOpen ? 'block' : 'hidden'} bg-slate-900 border-t border-slate-800`}
+        >
+          <div className="flex flex-col items-center py-4 space-y-3">
+            <button
+              onClick={() => setIsModalOpen(true)} // Direto igual no GameEx
+              className="px-6 py-3 rounded-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-extrabold uppercase tracking-wider shadow-lg shadow-yellow-500/30 hover:scale-105 transition-transform"
+            >
+              Jogar Agora 🎮
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* Modal - EXATAMENTE IGUAL AO GameEx */}
+      {isModalOpen && <ModalAuth onClose={() => setIsModalOpen(false)} />}
+    </>
   );
 }

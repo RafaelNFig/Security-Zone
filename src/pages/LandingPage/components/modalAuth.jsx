@@ -3,6 +3,16 @@ import { useNavigate } from "react-router-dom";
 export default function ModalAuth({ onClose }) {
   const navigate = useNavigate();
 
+  const handleCreateAccount = () => {
+    navigate("/register");
+    onClose(); // Fecha o modal ao navegar
+  };
+
+  const handleLogin = () => {
+    navigate("/login");
+    onClose(); // Fecha o modal ao navegar
+  };
+
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 font-sans">
       <div className="relative bg-slate-900 border border-yellow-400 rounded-md p-10 max-w-2xl w-full mx-4 shadow-[0_0_25px_rgba(0,0,0,0.8)]">
@@ -17,7 +27,7 @@ export default function ModalAuth({ onClose }) {
               Ainda não tenho uma conta
             </p>
             <button
-              onClick={() => navigate("/register")}
+              onClick={handleCreateAccount}
               className="bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-sm shadow-[0_3px_0_rgba(0,0,0,0.5)] hover:bg-yellow-300 transition-all"
             >
               CRIAR CONTA
@@ -29,7 +39,7 @@ export default function ModalAuth({ onClose }) {
               Eu tenho uma conta
             </p>
             <button
-              onClick={() => navigate("/login")}
+              onClick={handleLogin}
               className="border border-yellow-400 text-yellow-400 font-semibold py-3 px-8 rounded-sm shadow-[inset_0_0_8px_rgba(250,204,21,0.2)] hover:bg-yellow-500/10 transition-all"
             >
               ENTRAR
