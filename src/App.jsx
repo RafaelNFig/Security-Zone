@@ -4,6 +4,7 @@ import LandingPage from "./pages/LandingPage/landingpage.jsx";
 import Login from "./pages/Login/login.jsx";
 import Register from "./pages/Register/register.jsx";
 import Navbar from "./pages/LandingPage/components/navbar.jsx"; // Importe a Navbar
+import GameHome from "./pages/GameHome/gameHome.jsx";
 
 function App() {
   return (
@@ -18,6 +19,9 @@ function App() {
         {/* Páginas de autenticação */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+
+        {/* Game Home */}
+        <Route path="/gameHome" element={<GameHome />} />
       </Routes>
     </div>
   );
