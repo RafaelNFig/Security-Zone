@@ -10,6 +10,7 @@
     "tailwind-init-v4": "node ./node_modules/tailwindcss/cli.js init -p"
   },
   "dependencies": {
+    "firebase": "^12.5.0",
     "framer-motion": "^12.23.24",
     "lucide-react": "^0.548.0",
     "react": "^19.1.1",

@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { playerService } from "../../services/api";
 import { authUtils } from "../../utils/auth";
+import { useAuth } from "../../firebase/auth";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -11,6 +12,13 @@ export default function Login() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  
+  // Firebase Auth
+  const { 
+    loading: googleLoading, 
+    loginWithGoogle, 
+    isAuthenticated 
+  } = useAuth();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -20,6 +28,7 @@ export default function Login() {
     }));
   };
 
+  // Login tradicional com email/senha
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -38,6 +47,24 @@ export default function Login() {
     setLoading(false);
   };
 
+  // Login com Google
+  const handleGoogleLogin = async () => {
+    try {
+      await loginWithGoogle();
+      alert("Login com Google realizado com sucesso! 🎮");
+      navigate("/gamehome"); // Redireciona para o GameHome
+    } catch (error) {
+      console.error("Erro no login com Google:", error);
+      setError("Erro ao fazer login com Google. Tente novamente.");
+    }
+  };
+
+  // Se já estiver logado via Firebase, redireciona
+  if (isAuthenticated) {
+    navigate("/gamehome");
+    return null;
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-950 to-slate-900 text-white">
       <div className="relative bg-slate-900/90 border border-yellow-500 rounded-2xl p-8 w-full max-w-md shadow-[0_0_25px_rgba(255,215,0,0.3)]">
@@ -51,6 +78,26 @@ export default function Login() {
             {error}
           </div>
         )}
+
+        {/* Botão de Login com Google */}
+        <button
+          onClick={handleGoogleLogin}
+          disabled={googleLoading}
+          className="w-full flex items-center justify-center gap-3 py-3 rounded-lg bg-white text-slate-900 font-bold hover:bg-gray-100 transition mb-6 disabled:opacity-50"
+        >
+          <img 
+            src="https://www.google.com/favicon.ico" 
+            alt="Google" 
+            className="w-5 h-5"
+          />
+          {googleLoading ? "Carregando..." : "Entrar com Google"}
+        </button>
+
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex-1 h-px bg-gray-600"></div>
+          <span className="text-gray-400 text-sm">ou</span>
+          <div className="flex-1 h-px bg-gray-600"></div>
+        </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div>
