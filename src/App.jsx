@@ -5,6 +5,7 @@ import Login from "./pages/Login/login.jsx";
 import Register from "./pages/Register/register.jsx";
 import Navbar from "./pages/LandingPage/components/navbar.jsx"; // Importe a Navbar
 import GameHome from "./pages/GameHome/gameHome.jsx";
+import EditarPerfil from "./pages/GameHome/EditarPerfil/editarPerfil.jsx";
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
 
         {/* Game Home */}
         <Route path="/gameHome" element={<GameHome />} />
+        <Route path="/editarPerfil" element={<EditarPerfil />} />
       </Routes>
     </div>
   );

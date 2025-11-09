@@ -1,8 +1,24 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Settings, Volume2, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const GameHome = () => {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+  const navigate = useNavigate();
+
+  // Fecha o dropdown se clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-gradient-to-b from-[#000814] via-[#001D3D] to-[#000814] text-white font-sans">
       {/* --- Partículas de fundo --- */}
@@ -41,10 +57,45 @@ const GameHome = () => {
           </span>
         </div>
 
-        <div className="flex items-center gap-4 md:gap-6">
+        <div className="flex items-center gap-4 md:gap-6 relative" ref={dropdownRef}>
           <Volume2 className="cursor-pointer hover:text-[#FFD60A] transition" size={20} />
-          <Settings className="cursor-pointer hover:text-[#FFD60A] transition" size={20} />
-          <X className="cursor-pointer hover:text-red-500 transition" size={20} />
+
+          {/* --- Ícone Settings + Dropdown --- */}
+          <div className="relative">
+            <Settings
+              className="cursor-pointer hover:text-[#FFD60A] transition"
+              size={20}
+              onClick={() => setShowDropdown(!showDropdown)}
+            />
+
+            {showDropdown && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="absolute right-0 mt-2 w-48 bg-[#001D3D]/90 border border-[#003566] rounded-xl shadow-[0_0_15px_rgba(255,214,10,0.2)] backdrop-blur-md overflow-hidden z-50"
+              >
+                <button
+                  onClick={() => navigate("/perfil")}
+                  className="block w-full text-left px-4 py-2 text-sm text-[#FFD60A] hover:bg-[#003566]/60 transition"
+                >
+                  👤 Visualizar Perfil
+                </button>
+                <button
+                  onClick={() => navigate("/editarperfil")}
+                  className="block w-full text-left px-4 py-2 text-sm text-[#FFD60A] hover:bg-[#003566]/60 transition"
+                >
+                  ✏️ Editar Perfil
+                </button>
+              </motion.div>
+            )}
+          </div>
+
+          <X
+  className="cursor-pointer hover:text-red-500 transition"
+  size={20}
+  onClick={() => navigate("/")} // 👈 Redireciona para a LandingPage
+/>
         </div>
       </nav>
 
@@ -59,17 +110,15 @@ const GameHome = () => {
 
       {/* --- Carta holográfica --- */}
       <motion.div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-72 md:w-64 md:h-96 rounded-2xl bg-gradient-to-b from-[#001D3D] via-[#003566] to-[#000814] border border-[#FFD60A]/40 shadow-[0_0_60px_#003566] overflow-hidden"
+        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-72 md:w-64 md:h-96 rounded-2xl bg-gradient-to-b from-[#001D3D] via-[#003566] to-[#000814] border border-[#FFD60A]/40 shadow-[0_0_60px_#003566] overflow-hidden"
         animate={{ rotateY: [0, 180, 360] }}
         transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
       >
-        {/* Efeito de brilho holográfico */}
         <motion.div
           className="absolute inset-0 bg-gradient-to-r from-transparent via-[#FFD60A]/25 to-transparent"
           animate={{ x: ["-100%", "100%"] }}
           transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
         />
-        {/* Conteúdo da carta */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
           <h3 className="text-[#FFD60A] text-base md:text-lg font-bold tracking-widest mb-2">
             SECURITY ZONE
@@ -80,10 +129,8 @@ const GameHome = () => {
         </div>
       </motion.div>
 
-      {/* --- Reflexo da carta --- */}
       <div className="absolute bottom-[30%] left-1/2 -translate-x-1/2 w-40 md:w-52 h-6 md:h-8 bg-[#FFD60A]/10 blur-xl rounded-full"></div>
 
-      {/* --- Sidebar de eventos --- */}
       <div className="absolute top-40 left-1/2 md:left-10 md:top-40 -translate-x-1/2 md:translate-x-0 flex flex-col md:items-start items-center gap-4 md:gap-6 w-full md:w-auto px-6">
         {[1, 2, 3].map((i) => (
           <motion.div
