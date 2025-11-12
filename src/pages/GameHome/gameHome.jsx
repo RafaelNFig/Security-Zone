@@ -38,7 +38,7 @@ const GameHome = () => {
         // Fallback: tenta pegar do localStorage (login tradicional)
         const userData = authUtils.getPlayerData();
         console.log("Usuário do localStorage:", userData);
-        
+
         if (userData) {
           // Formata os dados para padrão único
           const formattedUser = {
@@ -75,7 +75,7 @@ const GameHome = () => {
   // Função para obter a primeira letra do nome
   const getInitial = () => {
     if (!user) return "N";
-    
+
     // Tenta pegar do displayName, PL_NAME, ou name
     const name = user.displayName || user.PL_NAME || user.name || "N";
     return name.charAt(0).toUpperCase();
@@ -84,7 +84,7 @@ const GameHome = () => {
   // Função para obter o nome completo
   const getDisplayName = () => {
     if (!user) return "Carregando...";
-    
+
     return user.displayName || user.PL_NAME || user.name || "Usuário";
   };
 
@@ -92,23 +92,23 @@ const GameHome = () => {
   const handleLogout = async () => {
     try {
       console.log("Iniciando logout...");
-      
+
       // 1. Limpa dados do localStorage (sistema tradicional)
       authUtils.clearAuthData();
-      
+
       // 2. Se estiver logado com Google, faz logout do Firebase também
       if (firebaseUser) {
         console.log("Fazendo logout do Firebase...");
         await firebaseLogout();
       }
-      
+
       // 3. Limpa estado local
       setUser(null);
-      
+
       // 4. Redireciona para a página inicial
       console.log("Logout concluído, redirecionando...");
       navigate("/");
-      
+
     } catch (error) {
       console.error("Erro durante o logout:", error);
       // Mesmo com erro, tenta limpar os dados locais e redirecionar
@@ -168,7 +168,7 @@ const GameHome = () => {
           <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-[#FFC300] to-[#FFD60A] flex items-center justify-center font-extrabold text-[#000814] shadow-[0_0_15px_#FFD60A]">
             {getInitial()}
           </div>
-          
+
           {/* Nome do usuário */}
           <span className="bg-[#003566]/60 px-3 md:px-4 py-1 md:py-2 rounded-md text-xs md:text-sm border border-[#FFD60A]/30 shadow-inner">
             {getDisplayName()}
@@ -226,7 +226,7 @@ const GameHome = () => {
         </div>
       </nav>
 
-      {/* Resto do código permanece igual... */}
+
       <motion.button
         className="absolute top-24 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#FFD60A] to-[#FFC300] text-[#000814] font-extrabold px-8 md:px-12 py-3 md:py-4 rounded-xl md:rounded-2xl text-lg md:text-xl shadow-[0_0_25px_#FFD60A] border border-[#000814] hover:shadow-[0_0_45px_#FFD60A] transition-all tracking-wide"
         animate={{ scale: [1, 1.05, 1] }}
@@ -235,25 +235,35 @@ const GameHome = () => {
         JOGAR
       </motion.button>
 
+      {/* Imagem girando (substitui o card) */}
       <motion.div
-        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-72 md:w-64 md:h-96 rounded-2xl bg-gradient-to-b from-[#001D3D] via-[#003566] to-[#000814] border border-[#FFD60A]/40 shadow-[0_0_60px_#003566] overflow-hidden"
+        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-72 md:w-64 md:h-96 rounded-2xl shadow-[0_0_60px_#FFD60A] overflow-hidden z-10"
         animate={{ rotateY: [0, 180, 360] }}
         transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+        style={{ transformStyle: "preserve-3d" }}
       >
+        {/* superfície holográfica (movimento de brilho) */}
         <motion.div
-          className="absolute inset-0 bg-gradient-to-r from-transparent via-[#FFD60A]/25 to-transparent"
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-[#FFD60A]/20 to-transparent pointer-events-none"
           animate={{ x: ["-100%", "100%"] }}
           transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
         />
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <h3 className="text-[#FFD60A] text-base md:text-lg font-bold tracking-widest mb-2">
-            SECURITY ZONE
-          </h3>
-          <p className="text-xs md:text-sm text-gray-300 uppercase">
-            Digital Defense Card
-          </p>
-        </div>
+
+        {/* imagem ocupando todo o card */}
+        <img
+          src="/img/loginFake.png"
+          alt="Login Fake"
+          className="w-full h-full object-cover rounded-2xl border border-[#FFD60A]/40"
+          style={{
+            backfaceVisibility: "hidden",
+            transformStyle: "preserve-3d",
+          }}
+        />
       </motion.div>
+
+      {/* sombra/reflexo da imagem */}
+      <div className="absolute bottom-[30%] left-1/2 -translate-x-1/2 w-40 md:w-52 h-6 md:h-8 bg-[#FFD60A]/10 blur-xl rounded-full" />
+
 
       <div className="absolute bottom-[30%] left-1/2 -translate-x-1/2 w-40 md:w-52 h-6 md:h-8 bg-[#FFD60A]/10 blur-xl rounded-full"></div>
 
