@@ -24,6 +24,11 @@ model Player {
   PL_EMAIL            String    @unique @db.VarChar(100) @map("PL_EMAIL")
   PL_PASSWORD_HASH    String    @db.VarChar(255) @map("PL_PASSWORD_HASH")
 
+  // NOVOS CAMPOS PARA FIREBASE AUTH
+  PL_FIREBASE_UID     String?   @unique @db.VarChar(255) @map("PL_FIREBASE_UID")
+  PL_AUTH_PROVIDER    String?   @db.VarChar(50) @map("PL_AUTH_PROVIDER")
+
+
   // Campos de Progresso e Economia
   PL_COINS            Int       @default(0) @map("PL_COINS")
   PL_GEMS             Int       @default(0) @map("PL_GEMS") 
