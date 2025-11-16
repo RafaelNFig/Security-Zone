@@ -5,6 +5,7 @@ import Login from "./pages/Login/login.jsx";
 import Register from "./pages/Register/register.jsx";
 import GameHome from "./pages/GameHome/gameHome.jsx";
 import ProfileView from "./pages/GameHome/ProfileView/profileView.jsx";
+import CardsView from "./pages/GameHome/CardsView/cardsView.jsx";
 
 function App() {
   return (
@@ -25,6 +26,8 @@ function App() {
         
         {/* Rota legada para compatibilidade - pode remover depois */}
         <Route path="/editarPerfil" element={<ProfileView />} />
+
+        <Route path="/cardsView" element={<CardsView />} />
       </Routes>
     </div>
   );
