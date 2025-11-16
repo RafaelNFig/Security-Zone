@@ -15,11 +15,46 @@ const GameHome = () => {
   // Hook do Firebase Auth
   const { user: firebaseUser, logout: firebaseLogout } = useAuth();
 
-  // Carregar dados do usuário
+  // Carregar dados do usuário - ATUALIZADO para buscar dados frescos
   useEffect(() => {
-    const loadUserData = () => {
+    const loadUserData = async () => {
       try {
-        // Primeiro tenta pegar do Firebase Auth (Google Login)
+        // Se temos um usuário logado, busca dados atualizados do backend
+        const userData = authUtils.getPlayerData();
+        if (userData && userData.PL_ID) {
+          try {
+            // Busca dados atualizados do perfil
+            const response = await fetch(`http://localhost:3000/api/profile/${userData.PL_ID}`);
+            if (response.ok) {
+              const updatedProfile = await response.json();
+              console.log("Perfil atualizado do backend:", updatedProfile);
+              
+              setUser({
+                name: updatedProfile.PL_NAME,
+                email: updatedProfile.PL_EMAIL,
+                displayName: updatedProfile.PL_NAME,
+                photoURL: updatedProfile.PL_AVATAR,
+                PL_ID: updatedProfile.PL_ID,
+                PL_NAME: updatedProfile.PL_NAME,
+                PL_EMAIL: updatedProfile.PL_EMAIL,
+                PL_AVATAR: updatedProfile.PL_AVATAR,
+                PL_COINS: updatedProfile.PL_COINS,
+                PL_LEVEL: updatedProfile.PL_LEVEL,
+                PL_GEMS: updatedProfile.PL_GEMS,
+                PL_LIFE: updatedProfile.PL_LIFE
+              });
+              
+              // Atualiza também no localStorage
+              authUtils.updatePlayerData(updatedProfile);
+              setLoading(false);
+              return;
+            }
+          } catch (error) {
+            console.log("Não foi possível buscar dados atualizados, usando cache:", error);
+          }
+        }
+
+        // Fallback: usa dados do Firebase ou localStorage
         if (firebaseUser) {
           console.log("Usuário do Firebase:", firebaseUser);
           setUser({
@@ -27,7 +62,6 @@ const GameHome = () => {
             email: firebaseUser.email,
             displayName: firebaseUser.displayName,
             photoURL: firebaseUser.photoURL,
-            // Para compatibilidade com seu sistema
             PL_NAME: firebaseUser.displayName,
             PL_EMAIL: firebaseUser.email
           });
@@ -35,18 +69,22 @@ const GameHome = () => {
           return;
         }
 
-        // Fallback: tenta pegar do localStorage (login tradicional)
-        const userData = authUtils.getPlayerData();
-        console.log("Usuário do localStorage:", userData);
-
+        // Fallback final: dados do localStorage
         if (userData) {
-          // Formata os dados para padrão único
+          console.log("Usuário do localStorage:", userData);
           const formattedUser = {
             name: userData.PL_NAME || userData.displayName || userData.name,
             email: userData.PL_EMAIL || userData.email,
             displayName: userData.PL_NAME || userData.displayName || userData.name,
             photoURL: userData.photoURL || userData.PL_AVATAR,
-            // Mantém dados originais para compatibilidade
+            PL_ID: userData.PL_ID,
+            PL_NAME: userData.PL_NAME,
+            PL_EMAIL: userData.PL_EMAIL,
+            PL_AVATAR: userData.PL_AVATAR,
+            PL_COINS: userData.PL_COINS,
+            PL_LEVEL: userData.PL_LEVEL,
+            PL_GEMS: userData.PL_GEMS,
+            PL_LIFE: userData.PL_LIFE,
             ...userData
           };
           setUser(formattedUser);
@@ -60,6 +98,35 @@ const GameHome = () => {
 
     loadUserData();
   }, [firebaseUser]);
+
+  // Adiciona um listener para atualizar quando voltar do perfil
+  useEffect(() => {
+    const handleFocus = () => {
+      // Quando a página ganha foco (volta do perfil), recarrega os dados
+      const userData = authUtils.getPlayerData();
+      if (userData && userData.PL_ID) {
+        // Recarrega dados atualizados
+        fetch(`http://localhost:3000/api/profile/${userData.PL_ID}`)
+          .then(response => response.ok ? response.json() : null)
+          .then(updatedProfile => {
+            if (updatedProfile) {
+              setUser(prevUser => ({
+                ...prevUser,
+                name: updatedProfile.PL_NAME,
+                displayName: updatedProfile.PL_NAME,
+                PL_NAME: updatedProfile.PL_NAME,
+                PL_EMAIL: updatedProfile.PL_EMAIL,
+                PL_AVATAR: updatedProfile.PL_AVATAR
+              }));
+            }
+          })
+          .catch(console.error);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
 
   // Fecha o dropdown se clicar fora
   useEffect(() => {
@@ -75,8 +142,6 @@ const GameHome = () => {
   // Função para obter a primeira letra do nome
   const getInitial = () => {
     if (!user) return "N";
-
-    // Tenta pegar do displayName, PL_NAME, ou name
     const name = user.displayName || user.PL_NAME || user.name || "N";
     return name.charAt(0).toUpperCase();
   };
@@ -84,43 +149,50 @@ const GameHome = () => {
   // Função para obter o nome completo
   const getDisplayName = () => {
     if (!user) return "Carregando...";
-
     return user.displayName || user.PL_NAME || user.name || "Usuário";
   };
 
-  // 🔥 LOGOUT COMPLETO - Ambos os sistemas
+  // Função para obter o ID do jogador
+  const getPlayerId = () => {
+    if (!user) return null;
+    return user.PL_ID || user.id || 1;
+  };
+
+  // 🔥 LOGOUT COMPLETO
   const handleLogout = async () => {
     try {
       console.log("Iniciando logout...");
-
-      // 1. Limpa dados do localStorage (sistema tradicional)
       authUtils.clearAuthData();
-
-      // 2. Se estiver logado com Google, faz logout do Firebase também
+      
       if (firebaseUser) {
         console.log("Fazendo logout do Firebase...");
         await firebaseLogout();
       }
 
-      // 3. Limpa estado local
       setUser(null);
-
-      // 4. Redireciona para a página inicial
       console.log("Logout concluído, redirecionando...");
       navigate("/");
 
     } catch (error) {
       console.error("Erro durante o logout:", error);
-      // Mesmo com erro, tenta limpar os dados locais e redirecionar
       authUtils.clearAuthData();
       setUser(null);
       navigate("/");
     }
   };
 
-  // Logout do dropdown (opcional - mantém para ter duas opções)
   const handleDropdownLogout = async () => {
     await handleLogout();
+  };
+
+  // Navegar para o perfil
+  const handleViewProfile = () => {
+    const playerId = getPlayerId();
+    if (playerId) {
+      navigate(`/profile/${playerId}`);
+    } else {
+      navigate("/profile/1");
+    }
   };
 
   if (loading) {
@@ -169,7 +241,7 @@ const GameHome = () => {
             {getInitial()}
           </div>
 
-          {/* Nome do usuário */}
+          {/* Nome do usuário - AGORA ATUALIZADO */}
           <span className="bg-[#003566]/60 px-3 md:px-4 py-1 md:py-2 rounded-md text-xs md:text-sm border border-[#FFD60A]/30 shadow-inner">
             {getDisplayName()}
           </span>
@@ -193,24 +265,22 @@ const GameHome = () => {
                 exit={{ opacity: 0 }}
                 className="absolute right-0 mt-2 w-48 bg-[#001D3D]/90 border border-[#003566] rounded-xl shadow-[0_0_15px_rgba(255,214,10,0.2)] backdrop-blur-md overflow-hidden z-50"
               >
+                {/* 🔥 APENAS O BOTÃO VISUALIZAR PERFIL */}
                 <button
-                  onClick={() => navigate("/perfil")}
-                  className="block w-full text-left px-4 py-2 text-sm text-[#FFD60A] hover:bg-[#003566]/60 transition"
+                  onClick={handleViewProfile}
+                  className="block w-full text-left px-4 py-3 text-sm text-[#FFD60A] hover:bg-[#003566]/60 transition flex items-center gap-2"
                 >
-                  👤 Visualizar Perfil
+                  <span className="text-lg">👤</span>
+                  Visualizar Perfil
                 </button>
-                <button
-                  onClick={() => navigate("/editarperfil")}
-                  className="block w-full text-left px-4 py-2 text-sm text-[#FFD60A] hover:bg-[#003566]/60 transition"
-                >
-                  ✏️ Editar Perfil
-                </button>
+                
                 <div className="h-px bg-[#003566]"></div>
                 <button
                   onClick={handleDropdownLogout}
-                  className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-[#003566]/60 transition"
+                  className="block w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-[#003566]/60 transition flex items-center gap-2"
                 >
-                  🚪 Sair
+                  <span className="text-lg">🚪</span>
+                  Sair
                 </button>
               </motion.div>
             )}
@@ -226,7 +296,7 @@ const GameHome = () => {
         </div>
       </nav>
 
-
+      {/* --- Botão JOGAR --- */}
       <motion.button
         className="absolute top-24 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#FFD60A] to-[#FFC300] text-[#000814] font-extrabold px-8 md:px-12 py-3 md:py-4 rounded-xl md:rounded-2xl text-lg md:text-xl shadow-[0_0_25px_#FFD60A] border border-[#000814] hover:shadow-[0_0_45px_#FFD60A] transition-all tracking-wide"
         animate={{ scale: [1, 1.05, 1] }}
@@ -235,7 +305,7 @@ const GameHome = () => {
         JOGAR
       </motion.button>
 
-      {/* Imagem girando (substitui o card) */}
+      {/* --- Imagem girando --- */}
       <motion.div
         className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-72 md:w-64 md:h-96 rounded-2xl shadow-[0_0_60px_#FFD60A] overflow-hidden z-10"
         animate={{ rotateY: [0, 180, 360] }}
@@ -261,12 +331,10 @@ const GameHome = () => {
         />
       </motion.div>
 
-      {/* sombra/reflexo da imagem */}
+      {/* --- sombra/reflexo da imagem --- */}
       <div className="absolute bottom-[30%] left-1/2 -translate-x-1/2 w-40 md:w-52 h-6 md:h-8 bg-[#FFD60A]/10 blur-xl rounded-full" />
 
-
-      <div className="absolute bottom-[30%] left-1/2 -translate-x-1/2 w-40 md:w-52 h-6 md:h-8 bg-[#FFD60A]/10 blur-xl rounded-full"></div>
-
+      {/* --- Cards de Eventos --- */}
       <div className="absolute top-40 left-1/2 md:left-10 md:top-40 -translate-x-1/2 md:translate-x-0 flex flex-col md:items-start items-center gap-4 md:gap-6 w-full md:w-auto px-6">
         {[1, 2, 3].map((i) => (
           <motion.div
