@@ -28,7 +28,7 @@ const GameHome = () => {
             if (response.ok) {
               const updatedProfile = await response.json();
               console.log("Perfil atualizado do backend:", updatedProfile);
-              
+
               setUser({
                 name: updatedProfile.PL_NAME,
                 email: updatedProfile.PL_EMAIL,
@@ -43,7 +43,7 @@ const GameHome = () => {
                 PL_GEMS: updatedProfile.PL_GEMS,
                 PL_LIFE: updatedProfile.PL_LIFE
               });
-              
+
               // Atualiza também no localStorage
               authUtils.updatePlayerData(updatedProfile);
               setLoading(false);
@@ -163,7 +163,7 @@ const GameHome = () => {
     try {
       console.log("Iniciando logout...");
       authUtils.clearAuthData();
-      
+
       if (firebaseUser) {
         console.log("Fazendo logout do Firebase...");
         await firebaseLogout();
@@ -273,7 +273,13 @@ const GameHome = () => {
                   <span className="text-lg">👤</span>
                   Visualizar Perfil
                 </button>
-                
+                <button
+                  onClick={() => navigate("/cardsView")}
+                  className="w-full px-4 py-2 text-left hover:bg-slate-700 transition"
+                >
+                  Ver Cartas
+                </button>
+
                 <div className="h-px bg-[#003566]"></div>
                 <button
                   onClick={handleDropdownLogout}
