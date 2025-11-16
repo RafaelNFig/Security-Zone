@@ -2,6 +2,7 @@
 import React, { useState, useRef } from "react";
 import { Edit2 } from "lucide-react";
 import ConfirmModal from "../ConfirmModal/confirmModal";
+import GoogleLink from "../GoogleLink/googleLink";
 
 const EditProfile = ({ profile, onUpdateProfile }) => {
   const formDataRef = useRef({
@@ -31,7 +32,7 @@ const EditProfile = ({ profile, onUpdateProfile }) => {
     if (newUsername && newUsername !== profile?.PL_NAME) {
       setTimeout(async () => {
         try {
-          const response = await fetch(`http://localhost:3000/api/profile/check-username/${newUsername}`);
+          const response = await fetch(`http://localhost:3001/api/profile/check-username/${newUsername}`);
           if (response.ok) {
             const data = await response.json();
             if (!data.available) {
@@ -59,7 +60,7 @@ const EditProfile = ({ profile, onUpdateProfile }) => {
     if (newEmail && newEmail !== profile?.PL_EMAIL) {
       setTimeout(async () => {
         try {
-          const response = await fetch(`http://localhost:3000/api/profile/check-email/${newEmail}`);
+          const response = await fetch(`http://localhost:3001/api/profile/check-email/${newEmail}`);
           if (response.ok) {
             const data = await response.json();
             if (!data.available) {
@@ -86,7 +87,7 @@ const EditProfile = ({ profile, onUpdateProfile }) => {
     // Verificar username
     if (formDataRef.current.PL_NAME && formDataRef.current.PL_NAME !== profile?.PL_NAME) {
       try {
-        const response = await fetch(`http://localhost:3000/api/profile/check-username/${formDataRef.current.PL_NAME}`);
+        const response = await fetch(`http://localhost:3001/api/profile/check-username/${formDataRef.current.PL_NAME}`);
         if (response.ok) {
           const data = await response.json();
           if (!data.available) {
@@ -104,7 +105,7 @@ const EditProfile = ({ profile, onUpdateProfile }) => {
     // Verificar email
     if (formDataRef.current.PL_EMAIL && formDataRef.current.PL_EMAIL !== profile?.PL_EMAIL) {
       try {
-        const response = await fetch(`http://localhost:3000/api/profile/check-email/${formDataRef.current.PL_EMAIL}`);
+        const response = await fetch(`http://localhost:3001/api/profile/check-email/${formDataRef.current.PL_EMAIL}`);
         if (response.ok) {
           const data = await response.json();
           if (!data.available) {
@@ -160,6 +161,11 @@ const EditProfile = ({ profile, onUpdateProfile }) => {
     setInputValues(prev => ({ ...prev, PL_AVATAR: e.target.value }));
   };
 
+  const handleGoogleLinkSuccess = (data) => {
+    console.log('Google account linked successfully:', data);
+    // Você pode atualizar o perfil local se necessário
+  };
+
   return (
     <div className="flex flex-col gap-6">
       {/* Modal de Confirmação */}
@@ -174,6 +180,7 @@ const EditProfile = ({ profile, onUpdateProfile }) => {
         type="info"
       />
 
+      {/* FORMULÁRIO - SÓ PARA DADOS DO PERFIL */}
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         {/* Username */}
         <div>
@@ -237,17 +244,8 @@ const EditProfile = ({ profile, onUpdateProfile }) => {
           </div>
         </div>
 
-        {/* Google Link */}
-        <div className="flex items-center gap-4 mt-4">
-          <img
-            src="https://www.google.com/favicon.ico"
-            alt="Google"
-            className="w-5 h-5"
-          />
-          <span className="text-gray-400 text-sm">Link our account</span>
-        </div>
-
-        <div className="mt-8 flex justify-end">
+        {/* Botão de Salvar - DENTRO do formulário */}
+        <div className="mt-4 flex justify-end">
           <button 
             type="submit"
             className="bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold px-8 py-2 rounded-lg transition disabled:opacity-50 flex items-center gap-2"
@@ -259,11 +257,17 @@ const EditProfile = ({ profile, onUpdateProfile }) => {
                 Saving...
               </>
             ) : (
-              'Save'
+              'Save Changes'
             )}
           </button>
         </div>
       </form>
+
+      {/* GOOGLE LINK - FORA do formulário para não acionar o submit */}
+      <GoogleLink 
+        profile={profile} 
+        onLinkSuccess={handleGoogleLinkSuccess} 
+      />
     </div>
   );
 };
