@@ -7,6 +7,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import playerRoutes from './routes/playerRoutes.js';
+import { router as profileRoutes } from './routes/profile.js'; // CORREÇÃO AQUI
 
 // Inicializa o aplicativo Express
 const app = express();
@@ -26,6 +27,9 @@ app.use(express.json());
 // Define o ponto de entrada principal para as rotas de jogador
 app.use('/api/player', playerRoutes);
 
+// ADICIONADO: Define as rotas de perfil
+app.use('/api/profile', profileRoutes);
+
 // Rota de Teste de Saúde do Servidor
 app.get('/', (req, res) => {
   res.send('Servidor Express rodando. A API de jogo está ativa!');
@@ -35,4 +39,5 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta http://localhost:${PORT}`);
   console.log('API de Registro de Jogador: POST http://localhost:3000/api/player/register');
+  console.log('API de Perfil: GET/PUT http://localhost:3000/api/profile/:playerId');
 });
