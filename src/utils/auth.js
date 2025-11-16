@@ -38,4 +38,32 @@ export const authUtils = {
   isAuthenticated() {
     return !!this.getToken();
   },
+
+  // 🔥 NOVA FUNÇÃO: Atualizar dados do jogador
+  updatePlayerData(updatedData) {
+    try {
+      // Atualiza os dados do SecurityZone
+      const existingSecurityZoneData = JSON.parse(localStorage.getItem("playerData") || '{}');
+      const mergedSecurityZoneData = { ...existingSecurityZoneData, ...updatedData };
+      localStorage.setItem("playerData", JSON.stringify(mergedSecurityZoneData));
+
+      // Atualiza também os dados do Firebase para compatibilidade
+      const existingFirebaseData = JSON.parse(localStorage.getItem("user") || '{}');
+      const mergedFirebaseData = { 
+        ...existingFirebaseData, 
+        ...updatedData,
+        // Garante compatibilidade de campos
+        displayName: updatedData.PL_NAME || existingFirebaseData.displayName,
+        email: updatedData.PL_EMAIL || existingFirebaseData.email,
+        photoURL: updatedData.PL_AVATAR || existingFirebaseData.photoURL
+      };
+      localStorage.setItem("user", JSON.stringify(mergedFirebaseData));
+
+      console.log("Dados do jogador atualizados no localStorage:", mergedSecurityZoneData);
+      return true;
+    } catch (error) {
+      console.error("Erro ao atualizar dados do jogador:", error);
+      return false;
+    }
+  }
 };
