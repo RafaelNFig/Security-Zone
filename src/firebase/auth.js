@@ -1,3 +1,4 @@
+//src/firebase/auth.js
 import { useState, useEffect } from 'react';
 import { 
   getAuth, 
