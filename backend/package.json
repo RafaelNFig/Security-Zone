@@ -1,35 +1,36 @@
-  {
+{
     "name": "backend",
     "version": "1.0.0",
     "description": "Backend da Security Zone - API do Jogo de Cartas",
     "main": "src/server.js",
     "type": "module",
     "scripts": {
-      "start": "node src/server.js",
-      "dev": "nodemon src/server.js",
-      "test": "echo \"Error: no test specified\" && exit 1"
+        "start": "node src/server.js",
+        "dev": "nodemon src/server.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
     },
     "keywords": [
-      "prisma",
-      "mysql",
-      "express",
-      "jwt"
+        "prisma",
+        "mysql",
+        "express",
+        "jwt"
     ],
     "author": "",
     "license": "ISC",
     "dependencies": {
-      "@prisma/client": "^6.17.1",
-      "bcrypt": "^5.1.1",
-      "cors": "^2.8.5",
-      "dotenv": "^17.2.3",
-      "express": "^4.19.2",
-      "jsonwebtoken": "^9.0.2"
+        "@prisma/client": "^6.19.0",
+        "bcrypt": "^5.1.1",
+        "cors": "^2.8.5",
+        "dotenv": "^17.2.3",
+        "express": "^4.21.2",
+        "firebase-admin": "^13.6.0",
+        "jsonwebtoken": "^9.0.2"
     },
     "devDependencies": {
-      "@eslint/js": "^9.39.0",
-      "eslint": "^9.39.0",
-      "globals": "^16.4.0",
-      "nodemon": "^3.1.4",
-      "prisma": "^6.17.1"
+        "@eslint/js": "^9.39.0",
+        "eslint": "^9.39.0",
+        "globals": "^16.4.0",
+        "nodemon": "^3.1.4",
+        "prisma": "^6.19.0"
     }
-  }
+}
