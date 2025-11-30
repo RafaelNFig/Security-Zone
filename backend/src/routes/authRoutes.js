@@ -1,50 +1,74 @@
-// backend/src/routes/authRoutes.js
 /* eslint-env node */
 import express from 'express';
-import { AuthController } from '../controllers/authController.js';
-import { protect } from '../middleware/authMiddleware.js';
+
+// 🔥 NOVO: Importamos as funções de rota nominalmente para evitar problemas de carregamento
+import AuthController, {
+  firebaseLogin,
+  linkGoogleAccount,
+  unlinkGoogleAccount,
+  verifyToken,
+  refreshToken,
+  logout
+} from '../controllers/authController.js';
+// NOTA: O 'AuthController' (default import) é mantido para usar a função 'formatPlayerResponse' na rota /session.
+
+// middlewares
+import { protect, optionalProtect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-/**
- * @route   POST /api/auth/firebase-login
- * @desc    Login com Firebase Authentication
- * @access  Public
- * @body    { firebaseToken: string }
- */
-router.post('/firebase-login', AuthController.firebaseLogin);
+// -------------------------------------------------------------------
+// Rotas de Autenticação
+// -------------------------------------------------------------------
 
-/**
- * @route   POST /api/auth/link-google
- * @desc    Vincular conta Google a um perfil existente
- * @access  Private (requer autenticação JWT)
- * @body    { firebaseToken: string }
- * @header  Authorization: Bearer <jwt-token>
- */
-router.post('/link-google', protect, AuthController.linkGoogleAccount);
+// Firebase login
+router.post('/firebase-login', firebaseLogin);
 
-/**
- * @route   POST /api/auth/unlink-google
- * @desc    Desvincular conta Google do perfil
- * @access  Private (requer autenticação JWT)
- * @header  Authorization: Bearer <jwt-token>
- */
-router.post('/unlink-google', protect, AuthController.unlinkGoogleAccount);
+// Vincular Google
+router.post('/link-google', protect, linkGoogleAccount);
 
-/**
- * @route   GET /api/auth/verify
- * @desc    Verificar token JWT e retornar dados do jogador
- * @access  Private (requer autenticação JWT)
- * @header  Authorization: Bearer <jwt-token>
- */
-router.get('/verify', protect, AuthController.verifyToken);
+// Desvincular Google
+router.post('/unlink-google', protect, unlinkGoogleAccount);
 
-/**
- * @route   GET /api/auth/me
- * @desc    Retornar dados do jogador autenticado (alias para verify)
- * @access  Private (requer autenticação JWT)
- * @header  Authorization: Bearer <jwt-token>
- */
-router.get('/me', protect, AuthController.verifyToken);
+// Verificar token
+router.get('/verify', protect, verifyToken);
+
+// Alias de /verify
+router.get('/me', protect, verifyToken);
+
+// Refresh token
+router.post('/refresh-token', protect, refreshToken);
+
+// Logout
+router.post('/logout', protect, logout);
+
+// Sessão opcional
+router.get('/session', optionalProtect, (req, res) => {
+  if (req.player) {
+    return res.json({
+      success: true,
+      isAuthenticated: true,
+      // Usa o método estático do Controller
+      player: AuthController.formatPlayerResponse(req.player)
+    });
+  }
+
+  res.json({
+    success: true,
+    isAuthenticated: false,
+    message: 'Usuário não autenticado'
+  });
+});
+
+// Health check
+router.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    service: 'Authentication Service',
+    version: '1.0.0'
+  });
+});
 
 export default router;

@@ -1,475 +1,408 @@
-// backend/src/controllers/authController.js
 /* eslint-env node */
 import prisma from '../prismaClient.js';
-import jwt from 'jsonwebtoken';
+// ✅ Importação correta (quebra o ciclo de dependência)
+import { generateToken as generateJWT } from '../utils/jwtUtils.js';
+import firebaseAdmin from '../config/firebaseAdmin.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'security-zone-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'security-zone-super-secret-key-2024-change-in-production';
 
-export class AuthController {
-  
-  /**
-   * Encontrar ou criar jogador a partir dos dados do Firebase
-   */
+class AuthController {
+
+  // -----------------------------------------
+  // 🔥 UTILITÁRIO GLOBAL: Verificar Token Firebase
+  // -----------------------------------------
+  static async verifyFirebaseToken(firebaseToken) {
+    if (!firebaseToken || typeof firebaseToken !== 'string') {
+      throw new Error('MISSING_FIREBASE_TOKEN');
+    }
+
+    try {
+      return await firebaseAdmin.verifyIdToken(firebaseToken);
+    } catch {
+      throw new Error('INVALID_FIREBASE_TOKEN');
+    }
+  }
+
+  // -----------------------------------------
+  // Criar ou recuperar player
+  // -----------------------------------------
   static async findOrCreatePlayerFromFirebase(firebaseUser) {
     const { uid, email, displayName, photoURL } = firebaseUser;
 
     try {
-      console.log('Procurando/criando jogador para Firebase UID:', uid);
-
-      // 1. Tentar encontrar por Firebase UID
       let player = await prisma.player.findUnique({
         where: { PL_FIREBASE_UID: uid },
-        include: {
-          decks: {
-            include: {
-              cardsInDeck: {
-                include: {
-                  card: true
-                }
-              }
-            }
-          },
-          inventory: {
-            include: { 
-              card: true 
-            }
-          }
-        }
+        select: AuthController.getPlayerSelectFields()
       });
 
-      if (player) {
-        console.log('Jogador encontrado por Firebase UID:', player.PL_NAME);
-        return player;
-      }
+      if (player) return player;
 
-      // 2. Tentar encontrar por email (para vincular contas existentes)
       if (email) {
-        player = await prisma.player.findUnique({
+        const emailPlayer = await prisma.player.findUnique({
           where: { PL_EMAIL: email },
-          include: {
-            decks: {
-              include: {
-                cardsInDeck: {
-                  include: {
-                    card: true
-                  }
-                }
-              }
-            },
-            inventory: {
-              include: { 
-                card: true 
-              }
-            }
-          }
+          select: AuthController.getPlayerSelectFields()
         });
 
-        if (player) {
-          console.log('Jogador encontrado por email, vinculando com Firebase:', player.PL_NAME);
-          
-          // Vincular conta existente com Firebase
-          player = await prisma.player.update({
-            where: { PL_ID: player.PL_ID },
+        if (emailPlayer) {
+          return prisma.player.update({
+            where: { PL_ID: emailPlayer.PL_ID },
             data: {
               PL_FIREBASE_UID: uid,
               PL_AUTH_PROVIDER: 'google',
-              PL_AVATAR: photoURL || player.PL_AVATAR
+              PL_AVATAR: photoURL || emailPlayer.PL_AVATAR,
             },
-            include: {
-              decks: {
-                include: {
-                  cardsInDeck: {
-                    include: {
-                      card: true
-                    }
-                  }
-                }
-              },
-              inventory: {
-                include: { 
-                  card: true 
-                }
-              }
-            }
+            select: AuthController.getPlayerSelectFields()
           });
-          return player;
         }
       }
 
-      // 3. Criar novo jogador
-      console.log('Criando novo jogador para email:', email);
-      const username = displayName || email.split('@')[0];
-      
-      // Garantir nome único
-      let finalUsername = username;
-      let counter = 1;
-      
-      while (await prisma.player.findUnique({ where: { PL_NAME: finalUsername } })) {
-        finalUsername = `${username}${counter}`;
-        counter++;
-        if (counter > 100) {
-          throw new Error('Não foi possível gerar um nome de usuário único');
-        }
-      }
+      const username = await AuthController.generateUniqueUsername(
+        displayName || email.split('@')[0]
+      );
 
-      player = await prisma.player.create({
+      return prisma.player.create({
         data: {
-          PL_NAME: finalUsername,
+          PL_NAME: username,
           PL_EMAIL: email,
           PL_FIREBASE_UID: uid,
           PL_AUTH_PROVIDER: 'google',
           PL_AVATAR: photoURL,
-          PL_PASSWORD_HASH: 'google-auth-no-password', // VALOR PADRÃO PARA USUÁRIOS GOOGLE
-          // Campos padrão para novo jogador
-          PL_COINS: 100, // Bônus inicial
+          PL_PASSWORD_HASH: 'google-auth-no-password',
+          PL_COINS: 100,
           PL_GEMS: 10,
           PL_LEVEL: 1,
-          PL_LIFE: 100
+          PL_LIFE: 100,
+
         },
-        include: {
-          decks: {
-            include: {
-              cardsInDeck: {
-                include: {
-                  card: true
-                }
-              }
-            }
-          },
-          inventory: {
-            include: { 
-              card: true 
-            }
-          }
-        }
+        select: AuthController.getPlayerSelectFields()
       });
 
-      console.log('Novo jogador criado:', player.PL_NAME);
-      return player;
-
     } catch (error) {
-      console.error('Erro no findOrCreatePlayerFromFirebase:', error);
+      console.error('❌ Erro no findOrCreatePlayerFromFirebase:', error);
       throw new Error(`Falha ao criar/encontrar jogador: ${error.message}`);
     }
   }
 
-  /**
-   * Gerar token JWT para o jogador
-   */
-  static generateToken(player) {
-    return jwt.sign(
-      { 
-        playerId: player.PL_ID,
-        email: player.PL_EMAIL,
-        name: player.PL_NAME,
-        provider: player.PL_AUTH_PROVIDER 
-      },
-      JWT_SECRET,
-      { expiresIn: '30d' }
-    );
+  static async generateUniqueUsername(base) {
+    let username = base;
+    let i = 1;
+
+    while (i <= 50) {
+      const exists = await prisma.player.findUnique({
+        where: { PL_NAME: username },
+        select: { PL_ID: true }
+      });
+
+      if (!exists) return username;
+
+      username = `${base}${i}`;
+      i++;
+    }
+
+    return `${base}${Date.now().toString().slice(-4)}`;
   }
 
-  /**
-   * Formatar resposta do jogador (remove dados sensíveis)
-   */
-  static formatPlayerResponse(player) {
+  static getPlayerSelectFields() {
     return {
-      PL_ID: player.PL_ID,
-      PL_NAME: player.PL_NAME,
-      PL_EMAIL: player.PL_EMAIL,
-      PL_COINS: player.PL_COINS,
-      PL_GEMS: player.PL_GEMS,
-      PL_LEVEL: player.PL_LEVEL,
-      PL_AVATAR: player.PL_AVATAR,
-      PL_LIFE: player.PL_LIFE,
-      PL_AUTH_PROVIDER: player.PL_AUTH_PROVIDER,
-      PL_Created_at: player.PL_Created_at,
-      decks: player.decks || [],
-      inventory: player.inventory || []
+      PL_ID: true,
+      PL_NAME: true,
+      PL_EMAIL: true,
+      PL_COINS: true,
+      PL_GEMS: true,
+      PL_LEVEL: true,
+      PL_AVATAR: true,
+      PL_LIFE: true,
+      PL_AUTH_PROVIDER: true,
+      PL_Created_at: true,
+      PL_FIREBASE_UID: true,
+
+      decks: {
+        select: {
+          DECK_ID: true,
+          DECK_NAME: true,
+          // CORRIGIDO: Campo correto do schema Deck
+          DECK_CREATED_AT: true,
+          DECK_IS_ACTIVE: true,
+        },
+        take: 5
+      },
+      inventory: {
+        select: {
+          // CORRIGIDO: Campos reais do modelo PlayerCard
+          CARDS_CD_ID: true,
+          PL_CD_QUANTITY: true,
+          // ITEM_ID, ITEM_TYPE, ITEM_NAME, ITEM_QUANTITY removidos, pois não existem no modelo PlayerCard
+        },
+        take: 10
+      }
     };
   }
 
-  /**
-   * Login com Firebase
-   */
+  static generateToken(player) {
+    return generateJWT(player);
+  }
+
+  static formatPlayerResponse(player) {
+    return {
+      ...player,
+      isVerified: !!player.PL_EMAIL,
+      hasPassword: player.PL_PASSWORD_HASH !== 'google-auth-no-password',
+      displayName: player.PL_NAME
+    };
+  }
+
+  // -----------------------------------------
+  // 🔥 LOGIN COM FIREBASE
+  // -----------------------------------------
   static async firebaseLogin(req, res) {
     try {
       const { firebaseToken } = req.body;
 
-      if (!firebaseToken) {
-        return res.status(400).json({ 
-          success: false,
-          error: 'Token Firebase não fornecido' 
-        });
-      }
-
-      console.log('🔐 Recebida requisição de login com Firebase');
-
-      // Verificar token com Firebase Admin SDK
-      let decodedToken;
+      let decoded;
       try {
-        const admin = await import('../firebase/admin.js'); // CAMINHO CORRETO
-        decodedToken = await admin.default.auth().verifyIdToken(firebaseToken);
-        console.log('✅ Token Firebase verificado para:', decodedToken.email);
-        console.log('📧 Email:', decodedToken.email);
-        console.log('🆔 UID:', decodedToken.uid);
-        console.log('👤 Nome:', decodedToken.name);
-      } catch (firebaseError) {
-        console.error('❌ Erro na verificação do token Firebase:', firebaseError);
+        decoded = await AuthController.verifyFirebaseToken(firebaseToken);
+      } catch (err) {
         return res.status(401).json({
           success: false,
-          error: 'Token Firebase inválido ou expirado'
+          error: 'Token Firebase inválido ou expirado.',
+          code: err.message
         });
       }
 
-      console.log('🔍 Buscando/criando jogador...');
-      
-      // Encontrar ou criar jogador
       const player = await AuthController.findOrCreatePlayerFromFirebase({
-        uid: decodedToken.uid,
-        email: decodedToken.email,
-        displayName: decodedToken.name,
-        photoURL: decodedToken.picture
+        uid: decoded.uid,
+        email: decoded.email,
+        displayName: decoded.name || decoded.email?.split('@')[0],
+        photoURL: decoded.picture
       });
-
-      console.log('✅ Jogador processado:', player.PL_NAME);
-
-      // Gerar token JWT
-      const token = AuthController.generateToken(player);
-
-      // Formatar resposta
-      const playerResponse = AuthController.formatPlayerResponse(player);
-
-      console.log('🎉 Login bem-sucedido para:', player.PL_NAME);
 
       res.json({
         success: true,
-        message: 'Login realizado com sucesso',
-        token,
-        player: playerResponse
+        message: 'Login realizado com sucesso!',
+        token: AuthController.generateToken(player),
+        player: AuthController.formatPlayerResponse(player),
       });
 
     } catch (error) {
-      console.error('💥 ERRO COMPLETO no login com Firebase:', error);
-      console.error('💥 Stack trace:', error.stack);
-      res.status(500).json({ 
-        success: false,
-        error: 'Falha na autenticação com Firebase',
-        details: error.message 
-      });
+      console.error('💥 ERRO no login Firebase:', error);
+      res.status(500).json({ success: false, error: 'FIREBASE_AUTH_ERROR' });
     }
   }
 
-  /**
-   * Vincular conta Google a perfil existente
-   */
+  // -----------------------------------------
+  // 🔥 VINCULAR GOOGLE (CORREÇÃO FINAL)
+  // -----------------------------------------
   static async linkGoogleAccount(req, res) {
+    console.log("🔥 [linkGoogleAccount] Início");
+
     try {
       const { firebaseToken } = req.body;
-      
-      if (!firebaseToken) {
-        return res.status(400).json({ 
-          success: false,
-          error: 'Token Firebase não fornecido' 
-        });
-      }
-
-      // playerId vem do middleware de autenticação
       const playerId = req.player.PL_ID;
 
-      console.log(`Vinculando conta Google ao jogador ID: ${playerId}`);
-
-      // Verificar token Firebase
-      let decodedToken;
+      // 1. Validar Token Firebase
+      let decoded;
       try {
-        const admin = await import('../firebase/admin.js'); // CAMINHO CORRETO
-        decodedToken = await admin.default.auth().verifyIdToken(firebaseToken);
-        console.log('Token Firebase verificado para vinculação:', decodedToken.email);
-      } catch (firebaseError) {
-        console.error('Erro na verificação do token Firebase:', firebaseError);
+        decoded = await AuthController.verifyFirebaseToken(firebaseToken);
+        // O token decodificado do Firebase (decoded) geralmente contém:
+        // decoded.uid (String)
+        // decoded.picture (String | undefined)
+      } catch (err) {
+        console.error("💥 ERRO NA VALIDAÇÃO DO TOKEN FIREBASE:", err);
         return res.status(401).json({
           success: false,
-          error: 'Token Firebase inválido ou expirado'
+          error: 'Token Firebase inválido ou expirado.',
+          code: err.message
         });
       }
 
-      // Verificar se já existe outro jogador com este Firebase UID
-      const existingPlayer = await prisma.player.findUnique({
-        where: { PL_FIREBASE_UID: decodedToken.uid }
+      // 2. Verificar conflito (já existe alguém com esse UID?)
+      const conflict = await prisma.player.findFirst({
+        where: {
+          PL_FIREBASE_UID: decoded.uid,
+          PL_ID: { not: playerId } // Ignora o próprio usuário
+        },
+        select: { PL_ID: true }
       });
 
-      if (existingPlayer && existingPlayer.PL_ID !== playerId) {
-        return res.status(400).json({
+      if (conflict) {
+        return res.status(409).json({
           success: false,
-          error: 'Esta conta Google já está vinculada a outro jogador'
+          error: 'Conta Google já vinculada a outro jogador.',
+          code: 'GOOGLE_ACCOUNT_ALREADY_LINKED'
         });
       }
 
-      // Verificar se o email do Firebase corresponde ao email do jogador
-      const currentPlayer = await prisma.player.findUnique({
-        where: { PL_ID: playerId }
-      });
+      // 3. Preparar dados para o Prisma (Sanitização)
+      // Garantir que todos os campos opcionais String? recebam String ou null.
+      const updateData = {
+        PL_FIREBASE_UID: decoded.uid,
+        PL_AUTH_PROVIDER: 'google',
+        // Usamos || null para converter explicitamente 'undefined' para 'null'
+        PL_AVATAR: decoded.picture || null,
+      };
 
-      if (currentPlayer.PL_EMAIL !== decodedToken.email) {
-        console.warn(`Email mismatch: Player ${currentPlayer.PL_EMAIL} vs Firebase ${decodedToken.email}`);
-        // Você pode decidir se quer permitir ou não
-        // return res.status(400).json({
-        //   success: false,
-        //   error: 'O email da conta Google não corresponde ao email da sua conta'
-        // });
-      }
+      console.log("💾 [Prisma] Atualizando Player ID:", playerId, "com os dados:", updateData);
 
-      // Atualizar jogador com dados do Firebase
+      // 4. Executar Update
       const updatedPlayer = await prisma.player.update({
         where: { PL_ID: playerId },
-        data: {
-          PL_FIREBASE_UID: decodedToken.uid,
-          PL_AUTH_PROVIDER: 'google',
-          PL_AVATAR: decodedToken.picture || req.player.PL_AVATAR
-        },
-        include: {
-          decks: {
-            include: {
-              cardsInDeck: {
-                include: {
-                  card: true
-                }
-              }
-            }
-          },
-          inventory: {
-            include: { 
-              card: true 
-            }
-          }
-        }
+        data: updateData,
+        select: AuthController.getPlayerSelectFields()
       });
 
-      // Gerar novo token JWT
-      const token = AuthController.generateToken(updatedPlayer);
-
-      // Formatar resposta
-      const playerResponse = AuthController.formatPlayerResponse(updatedPlayer);
-
-      console.log('Conta Google vinculada com sucesso para:', updatedPlayer.PL_NAME);
+      console.log("✅ [Prisma] Jogador atualizado com sucesso.");
 
       res.json({
         success: true,
-        message: 'Conta Google vinculada com sucesso',
-        token,
-        player: playerResponse
+        message: 'Conta Google vinculada com sucesso!',
+        token: AuthController.generateToken(updatedPlayer),
+        player: AuthController.formatPlayerResponse(updatedPlayer)
       });
 
     } catch (error) {
-      console.error('Erro ao vincular conta Google:', error);
+      console.error("💥 ERRO CRÍTICO AO VINCULAR GOOGLE:", error);
+
+      // Tratamento específico para erro de campo Unique (Código P2002)
+      if (error.code === 'P2002') {
+        return res.status(409).json({
+          success: false,
+          error: 'Esta conta Google já está em uso (violação de restrição única).',
+          code: 'UNIQUE_CONSTRAINT_VIOLATION'
+        });
+      }
+
+      // Erro 500 para qualquer outro erro do Prisma ou inesperado
       res.status(500).json({
         success: false,
-        error: 'Erro ao vincular conta Google',
+        error: 'GOOGLE_LINK_ERROR',
+        // Esta é a mensagem que o frontend está exibindo:
         details: error.message
       });
     }
   }
 
-  /**
-   * Verificar token JWT (para verificar se está logado)
-   */
+  // -----------------------------------------
+  // DESVINCULAR
+  // -----------------------------------------
+  static async unlinkGoogleAccount(req, res) {
+    try {
+      const playerId = req.player.PL_ID;
+
+      const player = await prisma.player.findUnique({
+        where: { PL_ID: playerId },
+        select: { PL_PASSWORD_HASH: true }
+      });
+
+      if (!player.PL_PASSWORD_HASH || player.PL_PASSWORD_HASH === 'google-auth-no-password') {
+        return res.status(400).json({
+          success: false,
+          error: 'Não pode desvincular sem senha definida.',
+          code: 'NO_PASSWORD_SET'
+        });
+      }
+
+      const updatedPlayer = await prisma.player.update({
+        where: { PL_ID: playerId },
+        data: { PL_FIREBASE_UID: null, PL_AUTH_PROVIDER: null },
+        select: AuthController.getPlayerSelectFields()
+      });
+
+      res.json({
+        success: true,
+        message: 'Conta Google desvinculada!',
+        player: AuthController.formatPlayerResponse(updatedPlayer)
+      });
+
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'GOOGLE_UNLINK_ERROR' });
+    }
+  }
+
+  // -----------------------------------------
+  // VERIFY TOKEN
+  // -----------------------------------------
   static async verifyToken(req, res) {
     try {
-      // Se chegou aqui, o middleware de autenticação já validou o token
-      // Apenas retornar os dados do jogador
       const player = await prisma.player.findUnique({
         where: { PL_ID: req.player.PL_ID },
-        include: {
-          decks: {
-            include: {
-              cardsInDeck: {
-                include: {
-                  card: true
-                }
-              }
-            }
-          },
-          inventory: {
-            include: { 
-              card: true 
-            }
-          }
-        }
+        select: AuthController.getPlayerSelectFields()
       });
 
       if (!player) {
         return res.status(404).json({
           success: false,
-          error: 'Jogador não encontrado'
+          error: 'PLAYER_NOT_FOUND'
         });
       }
 
-      const playerResponse = AuthController.formatPlayerResponse(player);
-
       res.json({
         success: true,
-        player: playerResponse
-      });
-
-    } catch (error) {
-      console.error('Erro ao verificar token:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Erro interno do servidor'
-      });
-    }
-  }
-
-  /**
-   * Desvincular conta Google
-   */
-  static async unlinkGoogleAccount(req, res) {
-    try {
-      const playerId = req.player.PL_ID;
-
-      console.log(`Desvinculando conta Google do jogador ID: ${playerId}`);
-
-      const updatedPlayer = await prisma.player.update({
-        where: { PL_ID: playerId },
-        data: {
-          PL_FIREBASE_UID: null,
-          PL_AUTH_PROVIDER: null
-        },
-        include: {
-          decks: {
-            include: {
-              cardsInDeck: {
-                include: {
-                  card: true
-                }
-              }
-            }
-          },
-          inventory: {
-            include: { 
-              card: true 
-            }
-          }
+        player: AuthController.formatPlayerResponse(player),
+        session: {
+          userId: player.PL_ID,
+          provider: player.PL_AUTH_PROVIDER,
         }
       });
 
-      const playerResponse = AuthController.formatPlayerResponse(updatedPlayer);
-
-      console.log('Conta Google desvinculada com sucesso para:', updatedPlayer.PL_NAME);
-
-      res.json({
-        success: true,
-        message: 'Conta Google desvinculada com sucesso',
-        player: playerResponse
-      });
-
     } catch (error) {
-      console.error('Erro ao desvincular conta Google:', error);
       res.status(500).json({
         success: false,
-        error: 'Erro ao desvincular conta Google',
-        details: error.message
+        error: "VERIFY_TOKEN_ERROR"
       });
     }
   }
+
+  // -----------------------------------------
+  // REFRESH TOKEN
+  // -----------------------------------------
+  static async refreshToken(req, res) {
+    try {
+      const player = await prisma.player.findUnique({
+        where: { PL_ID: req.player.PL_ID },
+        select: AuthController.getPlayerSelectFields()
+      });
+
+      if (!player) {
+        return res.status(404).json({ success: false, error: 'PLAYER_NOT_FOUND' });
+      }
+
+      res.json({
+        success: true,
+        message: 'Token atualizado!',
+        token: AuthController.generateToken(player),
+        player: AuthController.formatPlayerResponse(player)
+      });
+
+    } catch {
+      res.status(500).json({ success: false, error: 'TOKEN_REFRESH_ERROR' });
+    }
+  }
+
+  // -----------------------------------------
+  // ✅ LOGOUT 
+  // -----------------------------------------
+  static async logout(req, res) {
+    // Log para fins de debug
+    console.log(`👤 Logout solicitado para o jogador ID: ${req.player?.PL_ID}`);
+
+    // Resposta padrão de sucesso
+    res.json({
+      success: true,
+      message: 'Logout realizado com sucesso. Descarte o token localmente.'
+    });
+  }
 }
+
+// -----------------------------------------------------
+// 🔑 EXPORTAÇÕES NOMINAIS (Crucial para o authRoutes.js)
+// -----------------------------------------------------
+
+export const firebaseLogin = AuthController.firebaseLogin;
+export const linkGoogleAccount = AuthController.linkGoogleAccount;
+export const unlinkGoogleAccount = AuthController.unlinkGoogleAccount;
+export const verifyToken = AuthController.verifyToken;
+export const refreshToken = AuthController.refreshToken;
+export const logout = AuthController.logout;
+
+// Exportação default mantida para utilitários
+export default AuthController;
