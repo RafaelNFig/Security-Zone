@@ -1,170 +1,117 @@
-// backend/prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
 
-// 1. Configuração do Banco de Dados
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-// 2. Configuração do Cliente Node.js
-generator client {
-  provider = "prisma-client-js"
-}
-
-// =========================================================
-// MODELOS DE DADOS - SECURITY ZONE
-// =========================================================
-
-
-// 1. Tabela PLAYER (Jogadores)
 model Player {
-  // Campos de Identificação e Segurança
-  PL_ID               Int       @id @default(autoincrement()) @map("PL_ID")
-  PL_NAME             String    @unique @db.VarChar(45) @map("PL_NAME")
-  PL_EMAIL            String    @unique @db.VarChar(100) @map("PL_EMAIL")
-  PL_PASSWORD_HASH    String    @db.VarChar(255) @map("PL_PASSWORD_HASH")
+  PL_ID                Int           @id @default(autoincrement()) @map("PL_ID")
+  PL_NAME              String        @unique @map("PL_NAME") @db.VarChar(45)
+  PL_EMAIL             String        @unique @map("PL_EMAIL") @db.VarChar(100)
+  PL_PASSWORD_HASH     String        @map("PL_PASSWORD_HASH") @db.VarChar(255)
+  PL_FIREBASE_UID      String?       @unique @map("PL_FIREBASE_UID") @db.VarChar(255)
+  PL_AUTH_PROVIDER     String?       @map("PL_AUTH_PROVIDER") @db.VarChar(50)
+  PL_COINS             Int           @default(0) @map("PL_COINS")
+  PL_GEMS              Int           @default(0) @map("PL_GEMS")
+  PL_LEVEL             Int           @default(1) @map("PL_LEVEL")
+  PL_AVATAR            String?       @map("PL_AVATAR") @db.VarChar(255)
+  PL_LIFE              Int           @default(100) @map("PL_LIFE")
+  PL_ACTIVE_DECK_COUNT Int           @default(0) @map("PL_ACTIVE_DECK_COUNT")
+  PL_Created_at        DateTime      @default(now()) @map("PL_Created_at")
+  decks                Deck[]
+  matchesWon           Match[]       @relation("MatchWinner")
+  matchesParticipated  MatchPlayer[]
+  inventory            PlayerCard[]
 
-  // NOVOS CAMPOS PARA FIREBASE AUTH
-  PL_FIREBASE_UID     String?   @unique @db.VarChar(255) @map("PL_FIREBASE_UID")
-  PL_AUTH_PROVIDER    String?   @db.VarChar(50) @map("PL_AUTH_PROVIDER")
-
-
-  // Campos de Progresso e Economia
-  PL_COINS            Int       @default(0) @map("PL_COINS")
-  PL_GEMS             Int       @default(0) @map("PL_GEMS") 
-  PL_LEVEL            Int       @default(1) @map("PL_LEVEL")
-  PL_AVATAR           String?   @db.VarChar(255) @map("PL_AVATAR")
-  PL_LIFE             Int       @default(100) @map("PL_LIFE") 
-
-  // Metadados
-  PL_Created_at       DateTime  @default(now()) @map("PL_Created_at")
-
-  // Relacionamentos: Um jogador pode ter muitos...
-  decks               Deck[]
-  inventory           PlayerCard[]
-  matchesParticipated MatchPlayer[]
-  matchesWon          Match[]       @relation("MatchWinner")
-
-  @@map("PLAYER") 
+  @@map("PLAYER")
 }
 
-
-// 2. Tabela CARDS (Catálogo de Cartas)
 model Card {
-  CD_ID               Int       @id @default(autoincrement()) @map("CD_ID")
-  CD_NAME             String    @unique @db.VarChar(100) @map("CD_NAME")
-  CD_DESCRIPTION      String    @db.VarChar(255) @map("CD_DESCRIPTION") 
-  CD_TYPE             String    @db.VarChar(50) @map("CD_TYPE") 
-  CD_COST             Int       @map("CD_COST")
-  CD_LIFE             Int?      @map("CD_LIFE")
-  CD_ATTACK           Int?      @map("CD_ATTACK")
-  CD_DEFENSE          Int?      @map("CD_DEFENSE")
-  CD_IMAGE            String?   @db.VarChar(255) @map("CD_IMAGE")
-
-  // Relacionamentos
-  inInventories       PlayerCard[]
-  inDecks             DeckCard[]
+  CD_ID                Int          @id @default(autoincrement()) @map("CD_ID")
+  CD_NAME              String       @unique @map("CD_NAME") @db.VarChar(100)
+  CD_DESCRIPTION       String       @map("CD_DESCRIPTION") @db.VarChar(255)
+  CD_TYPE              String       @map("CD_TYPE") @db.VarChar(50)
+  CD_COST              Int          @map("CD_COST")
+  CD_LIFE              Int?         @map("CD_LIFE")
+  CD_ATTACK            Int?         @map("CD_ATTACK")
+  CD_DEFENSE           Int?         @map("CD_DEFENSE")
+  CD_IMAGE             String?      @map("CD_IMAGE") @db.VarChar(255)
+  CD_MAX_IN_DECK       Int          @default(3) @map("CD_MAX_IN_DECK")
+  CD_MAX_IN_COLLECTION Int          @default(4) @map("CD_MAX_IN_COLLECTION")
+  inDecks              DeckCard[]
+  inInventories        PlayerCard[]
 
   @@map("CARDS")
 }
 
-
-// 3. Tabela PLAYER_CARD (Inventário - Chave Composta)
 model PlayerCard {
-  // Chaves compostas
-  PLAYER_PL_ID        Int       @map("PLAYER_PL_ID")
-  CARDS_CD_ID         Int       @map("CARDS_CD_ID")
+  PLAYER_PL_ID   Int    @map("PLAYER_PL_ID")
+  CARDS_CD_ID    Int    @map("CARDS_CD_ID")
+  PL_CD_QUANTITY Int    @map("PL_CD_QUANTITY")
+  card           Card   @relation(fields: [CARDS_CD_ID], references: [CD_ID])
+  player         Player @relation(fields: [PLAYER_PL_ID], references: [PL_ID])
 
-  // Relacionamentos (FOREIGN KEYS)
-  player              Player    @relation(fields: [PLAYER_PL_ID], references: [PL_ID])
-  card                Card      @relation(fields: [CARDS_CD_ID], references: [CD_ID])
-
-  // Dados do inventário
-  PL_CD_QUANTITY      Int       @map("PL_CD_QUANTITY")
-
-  // CHAVE PRIMÁRIA COMPOSTA
   @@id([PLAYER_PL_ID, CARDS_CD_ID])
+  @@index([CARDS_CD_ID], map: "PLAYER_CARD_CARDS_CD_ID_fkey")
   @@map("PLAYER_CARD")
 }
 
-
-// 4. Tabela DECK (Definição dos Decks do Jogador)
 model Deck {
-  DECK_ID             Int       @id @default(autoincrement()) @map("DECK_ID")
-  DECK_NAME           String    @db.VarChar(100) @map("DECK_NAME")
-  DECK_IS_ACTIVE      Boolean   @default(false) @map("DECK_IS_ACTIVE") 
-
-  // Chave estrangeira para o Dono
-  PLAYER_PL_ID        Int       @map("PLAYER_PL_ID")
-  player              Player    @relation(fields: [PLAYER_PL_ID], references: [PL_ID])
-
-  DECK_CREATED_AT     DateTime  @default(now()) @map("DECK_CREATED_AT")
-
-  // Relacionamentos
-  cardsInDeck         DeckCard[]
-  matchesUsedIn       MatchPlayer[] 
+  DECK_ID         Int           @id @default(autoincrement()) @map("DECK_ID")
+  DECK_NAME       String        @map("DECK_NAME") @db.VarChar(100)
+  DECK_IS_ACTIVE  Boolean       @default(false) @map("DECK_IS_ACTIVE")
+  PLAYER_PL_ID    Int           @map("PLAYER_PL_ID")
+  DECK_CREATED_AT DateTime      @default(now()) @map("DECK_CREATED_AT")
+  player          Player        @relation(fields: [PLAYER_PL_ID], references: [PL_ID])
+  cardsInDeck     DeckCard[]
+  matchesUsedIn   MatchPlayer[]
 
   @@unique([PLAYER_PL_ID, DECK_NAME])
   @@map("DECK")
 }
 
-
-// 5. Tabela DECK_CARD (Conteúdo do Deck - Chave Composta)
 model DeckCard {
-  // Chaves compostas
-  DECK_ID             Int       @map("DECK_ID")
-  CARDS_CD_ID         Int       @map("CARDS_CD_ID")
+  DECK_ID          Int  @map("DECK_ID")
+  CARDS_CD_ID      Int  @map("CARDS_CD_ID")
+  DECK_CD_QUANTITY Int  @default(1) @map("DECK_CD_QUANTITY")
+  DECK_CD_POSITION Int? @map("DECK_CD_POSITION")
+  card             Card @relation(fields: [CARDS_CD_ID], references: [CD_ID])
+  deck             Deck @relation(fields: [DECK_ID], references: [DECK_ID])
 
-  // Relacionamentos
-  deck                Deck      @relation(fields: [DECK_ID], references: [DECK_ID])
-  card                Card      @relation(fields: [CARDS_CD_ID], references: [CD_ID])
-
-  // Dados do deck
-  DECK_CD_QUANTITY    Int       @map("DECK_CD_QUANTITY")
-
-  // CHAVE PRIMÁRIA COMPOSTA
   @@id([DECK_ID, CARDS_CD_ID])
+  @@index([DECK_ID])
+  @@index([CARDS_CD_ID])
   @@map("DECK_CARD")
 }
 
-
-// 6. Tabela MATCH (Registro de Partidas)
 model Match {
-  MATCH_ID            Int       @id @default(autoincrement()) @map("MT_ID")
-  MT_START_TIME       DateTime  @default(now()) @map("MT_START_TIME")
-  MT_END_TIME         DateTime? @map("MT_END_TIME") 
-  MT_TYPE             String    @db.VarChar(50) @map("MT_TYPE")
-  
-  // Vencedor (FK para Player)
-  MT_WINNER_ID        Int?      @map("MT_WINNER_ID") 
-  winner              Player?   @relation("MatchWinner", fields: [MT_WINNER_ID], references: [PL_ID])
+  MATCH_ID      Int           @id @default(autoincrement()) @map("MT_ID")
+  MT_START_TIME DateTime      @default(now()) @map("MT_START_TIME")
+  MT_END_TIME   DateTime?     @map("MT_END_TIME")
+  MT_TYPE       String        @map("MT_TYPE") @db.VarChar(50)
+  MT_WINNER_ID  Int?          @map("MT_WINNER_ID")
+  winner        Player?       @relation("MatchWinner", fields: [MT_WINNER_ID], references: [PL_ID])
+  participants  MatchPlayer[]
 
-  // Relacionamento com participantes
-  participants        MatchPlayer[] 
-
+  @@index([MT_WINNER_ID], map: "MATCH_MT_WINNER_ID_fkey")
   @@map("MATCH")
 }
 
-
-// 7. Tabela MATCH_PLAYER (Participantes da Partida - Chave Composta)
 model MatchPlayer {
-  // Chaves compostas
-  MATCH_ID            Int       @map("MATCH_ID")
-  PLAYER_ID           Int       @map("PLAYER_ID")
+  MATCH_ID         Int     @map("MATCH_ID")
+  PLAYER_ID        Int     @map("PLAYER_ID")
+  DECK_USED_ID     Int     @map("DECK_USED_ID")
+  MT_PL_FINAL_LIFE Int     @map("MT_PL_FINAL_LIFE")
+  MT_PL_IS_WINNER  Boolean @map("MT_PL_IS_WINNER")
+  deckUsed         Deck    @relation(fields: [DECK_USED_ID], references: [DECK_ID])
+  match            Match   @relation(fields: [MATCH_ID], references: [MATCH_ID])
+  player           Player  @relation(fields: [PLAYER_ID], references: [PL_ID])
 
-  // Relacionamentos - CORRIGIDO: references: [MATCH_ID]
-  match               Match     @relation(fields: [MATCH_ID], references: [MATCH_ID]) 
-  player              Player    @relation(fields: [PLAYER_ID], references: [PL_ID])
-
-  // Relacionamento do Deck usado
-  DECK_USED_ID        Int       @map("DECK_USED_ID")
-  deckUsed            Deck      @relation(fields: [DECK_USED_ID], references: [DECK_ID])
-
-  // Dados da performance na partida
-  MT_PL_FINAL_LIFE    Int       @map("MT_PL_FINAL_LIFE")
-  MT_PL_IS_WINNER     Boolean   @map("MT_PL_IS_WINNER")
-
-  // CHAVE PRIMÁRIA COMPOSTA
   @@id([MATCH_ID, PLAYER_ID])
+  @@index([DECK_USED_ID], map: "MATCH_PLAYER_DECK_USED_ID_fkey")
+  @@index([PLAYER_ID], map: "MATCH_PLAYER_PLAYER_ID_fkey")
   @@map("MATCH_PLAYER")
 }

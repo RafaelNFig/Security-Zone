@@ -5,6 +5,7 @@
     "main": "src/server.js",
     "type": "module",
     "scripts": {
+        "seed": "node prisma/seed.js",
         "start": "node src/server.js",
         "dev": "nodemon src/server.js",
         "test": "echo \"Error: no test specified\" && exit 1"
@@ -36,6 +37,6 @@
         "eslint": "^9.39.0",
         "globals": "^16.4.0",
         "nodemon": "^3.1.4",
-        "prisma": "^6.19.0"
+        "prisma": "^6.19.1"
     }
 }
