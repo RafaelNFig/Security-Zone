@@ -1,3 +1,4 @@
+// App.jsx - ADICIONE ESTA ROTA
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 import LandingPage from "./pages/LandingPage/landingpage.jsx";
@@ -6,6 +7,7 @@ import Register from "./pages/Register/register.jsx";
 import GameHome from "./pages/GameHome/gameHome.jsx";
 import ProfileView from "./pages/GameHome/ProfileView/profileView.jsx";
 import CardsView from "./pages/GameHome/CardsView/cardsView.jsx";
+import EditDeck from "./pages/GameHome/CardsView/Decks/EditDeck.jsx"; // 🔴 IMPORTAÇÃO
 
 function App() {
   return (
@@ -21,13 +23,18 @@ function App() {
         {/* Game Home */}
         <Route path="/gameHome" element={<GameHome />} />
         
-        {/* Profile - Rota principal do perfil */}
+        {/* Profile */}
         <Route path="/profile/:playerId" element={<ProfileView />} />
-        
-        {/* Rota legada para compatibilidade - pode remover depois */}
         <Route path="/editarPerfil" element={<ProfileView />} />
 
+        {/* Cards */}
         <Route path="/cardsView" element={<CardsView />} />
+
+        {/* 🔴 NOVA ROTA PARA EDIÇÃO DE DECK */}
+        <Route 
+          path="/deck/edit/:playerId/:deckId" 
+          element={<EditDeck />} 
+        />
       </Routes>
     </div>
   );

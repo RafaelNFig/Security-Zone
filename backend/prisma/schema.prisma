@@ -21,6 +21,8 @@ model Player {
   PL_LIFE              Int           @default(100) @map("PL_LIFE")
   PL_ACTIVE_DECK_COUNT Int           @default(0) @map("PL_ACTIVE_DECK_COUNT")
   PL_Created_at        DateTime      @default(now()) @map("PL_Created_at")
+  
+  // 🔴 RELAÇÕES ATUALIZADAS
   decks                Deck[]
   matchesWon           Match[]       @relation("MatchWinner")
   matchesParticipated  MatchPlayer[]
@@ -41,6 +43,8 @@ model Card {
   CD_IMAGE             String?      @map("CD_IMAGE") @db.VarChar(255)
   CD_MAX_IN_DECK       Int          @default(3) @map("CD_MAX_IN_DECK")
   CD_MAX_IN_COLLECTION Int          @default(4) @map("CD_MAX_IN_COLLECTION")
+  
+  // 🔴 RELAÇÕES ATUALIZADAS
   inDecks              DeckCard[]
   inInventories        PlayerCard[]
 
@@ -65,9 +69,11 @@ model Deck {
   DECK_IS_ACTIVE  Boolean       @default(false) @map("DECK_IS_ACTIVE")
   PLAYER_PL_ID    Int           @map("PLAYER_PL_ID")
   DECK_CREATED_AT DateTime      @default(now()) @map("DECK_CREATED_AT")
+  
+  // 🔴 RELAÇÕES ATUALIZADAS
   player          Player        @relation(fields: [PLAYER_PL_ID], references: [PL_ID])
-  cardsInDeck     DeckCard[]
-  matchesUsedIn   MatchPlayer[]
+  cardsInDeck     DeckCard[]    @relation("DeckToDeckCard")
+  matchesUsedIn   MatchPlayer[] @relation("DeckToMatchPlayer")
 
   @@unique([PLAYER_PL_ID, DECK_NAME])
   @@map("DECK")
@@ -78,8 +84,10 @@ model DeckCard {
   CARDS_CD_ID      Int  @map("CARDS_CD_ID")
   DECK_CD_QUANTITY Int  @default(1) @map("DECK_CD_QUANTITY")
   DECK_CD_POSITION Int? @map("DECK_CD_POSITION")
+  
+  // 🔴 RELAÇÕES ATUALIZADAS
   card             Card @relation(fields: [CARDS_CD_ID], references: [CD_ID])
-  deck             Deck @relation(fields: [DECK_ID], references: [DECK_ID])
+  deck             Deck @relation("DeckToDeckCard", fields: [DECK_ID], references: [DECK_ID])
 
   @@id([DECK_ID, CARDS_CD_ID])
   @@index([DECK_ID])
@@ -93,6 +101,8 @@ model Match {
   MT_END_TIME   DateTime?     @map("MT_END_TIME")
   MT_TYPE       String        @map("MT_TYPE") @db.VarChar(50)
   MT_WINNER_ID  Int?          @map("MT_WINNER_ID")
+  
+  // 🔴 RELAÇÕES ATUALIZADAS
   winner        Player?       @relation("MatchWinner", fields: [MT_WINNER_ID], references: [PL_ID])
   participants  MatchPlayer[]
 
@@ -106,7 +116,9 @@ model MatchPlayer {
   DECK_USED_ID     Int     @map("DECK_USED_ID")
   MT_PL_FINAL_LIFE Int     @map("MT_PL_FINAL_LIFE")
   MT_PL_IS_WINNER  Boolean @map("MT_PL_IS_WINNER")
-  deckUsed         Deck    @relation(fields: [DECK_USED_ID], references: [DECK_ID])
+  
+  // 🔴 RELAÇÕES ATUALIZADAS
+  deckUsed         Deck    @relation("DeckToMatchPlayer", fields: [DECK_USED_ID], references: [DECK_ID])
   match            Match   @relation(fields: [MATCH_ID], references: [MATCH_ID])
   player           Player  @relation(fields: [PLAYER_ID], references: [PL_ID])
 

@@ -1,38 +1,73 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Search, Settings, X, Bell, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { motion } from "framer-motion";
 
 import DecksView from "./Decks/decksView";
 import CreateDeck from "./Decks/CreateDeck";
 
-const cards = [
-    { id: 1, name: "Página Fake de Login", type: "attack", img: "/img/loginFake.png" },
-    { id: 2, name: "Detector de Redes Falsas", type: "defense", img: "/img/detectarede.png" },
-    { id: 3, name: "Captura de Pacotes", type: "atack", img: "/img/capturapacotes.png" },
-    { id: 4, name: "Atualização de Software", type: "magic", img: "/img/atualizacao.png" },
-    { id: 5, name: "Escudo Digital", type: "magic", img: "/img/escudo.png" },
-    { id: 6, name: "Evil Twin", type: "attack", img: "/img/eviltwin.png" },
-    { id: 7, name: "Injeçao de Script", type: "attack", img: "/img/injecaoscript.png" },
-    { id: 8, name: "Software Malicioso", type: "magic", img: "/img/malicioso.png" },
-    { id: 9, name: "Modo de Navegação", type: "defense", img: "/img/modonavega.png" },
-    { id: 10, name: "Senha Forte++", type: "defense", img: "/img/senhaforte.png" },
-    { id: 11, name: "VPN Ativada", type: "defense", img: "/img/vpn.png" },
-    { id: 12, name: "Firewall Básico", type: "defense", img: "/img/firewall.png" },
-];
-
 function CardsView() {
     const [filter, setFilter] = useState("all");
     const [search, setSearch] = useState("");
     const [sidebarOpen, setSidebarOpen] = useState(true);
-
-    // 🔵 controle de páginas internas
     const [page, setPage] = useState("cards");
     const [decks, setDecks] = useState([]);
+    
+    // Estados para cartas da API
+    const [cards, setCards] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    // 🔵 Buscar cartas da API
+    useEffect(() => {
+        const fetchPlayerCards = async () => {
+            setIsLoading(true);
+            setError(null);
+            
+            try {
+                // Por enquanto, use playerId = 1 (KLB)
+                // Depois substitua pelo ID do jogador logado
+                const playerId = 1;
+                const response = await fetch(`http://localhost:3000/api/player/${playerId}/cards`);
+                
+                if (!response.ok) {
+                    throw new Error(`Erro HTTP: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    setCards(data.cards);
+                } else {
+                    throw new Error(data.error || "Erro ao carregar cartas");
+                }
+                
+            } catch (err) {
+                setError(err.message);
+                console.error("❌ Erro ao buscar cartas:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchPlayerCards();
+    }, []);
 
     function handleCreateDeck(newDeck) {
         setDecks([...decks, newDeck]);
-        setPage("decks"); // volta para a lista de decks
+        setPage("decks");
     }
+
+    // 🔵 Filtrar cartas
+    const filteredCards = cards.filter((card) => {
+        const matchesSearch = card.name.toLowerCase().includes(search.toLowerCase());
+        // Ajuste o tipo para corresponder aos valores da API
+        const cardType = card.type; // "defesa", "ataque", "magia"
+        const matchesType = filter === "all" || 
+                           (filter === "attack" && cardType === "ataque") ||
+                           (filter === "defense" && cardType === "defesa") ||
+                           (filter === "magic" && cardType === "magia");
+        return matchesSearch && matchesType;
+    });
 
     return (
         <div className="flex w-screen h-screen bg-[#000814] text-white select-none">
@@ -123,36 +158,99 @@ function CardsView() {
                             <X className="cursor-pointer hover:text-red-500" />
                         </div>
 
-                        {/* GRID DE CARTAS */}
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mt-6">
-                            {cards
-                                .filter((c) => {
-                                    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase());
-                                    const matchesType = filter === "all" || c.type === filter;
-                                    return matchesSearch && matchesType;
-                                })
-                                .map((card) => (
+                        {/* 🔵 ESTADOS DE CARREGAMENTO/ERRO */}
+                        {isLoading && (
+                            <div className="flex justify-center items-center h-64">
+                                <div className="text-[#FFD60A] animate-pulse">
+                                    Carregando cartas...
+                                </div>
+                            </div>
+                        )}
+
+                        {error && (
+                            <div className="bg-red-900/30 border border-red-700 rounded-lg p-4 mb-4">
+                                <p className="text-red-400">Erro: {error}</p>
+                                <button 
+                                    onClick={() => window.location.reload()}
+                                    className="mt-2 px-4 py-2 bg-red-700 hover:bg-red-600 rounded-lg"
+                                >
+                                    Tentar novamente
+                                </button>
+                            </div>
+                        )}
+
+                        {/* 🔵 MENSAGEM SE NÃO HOUVER CARTAS */}
+                        {!isLoading && !error && filteredCards.length === 0 && (
+                            <div className="flex flex-col justify-center items-center h-64 text-center">
+                                <div className="text-6xl mb-4">🃏</div>
+                                <h3 className="text-xl text-[#FFD60A] mb-2">Nenhuma carta encontrada</h3>
+                                <p className="text-gray-400">
+                                    {search || filter !== "all" 
+                                        ? "Tente alterar os filtros de busca" 
+                                        : "Você ainda não possui cartas no inventário"}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* 🔵 GRID DE CARTAS */}
+                        {!isLoading && !error && filteredCards.length > 0 && (
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mt-6">
+                                {filteredCards.map((card) => (
                                     <motion.div
                                         key={card.id}
                                         whileHover={{ scale: 1.05 }}
                                         className="relative bg-[#001D3D]/70 rounded-xl border border-[#003566] shadow-[0_0_25px_#003566] p-4 cursor-pointer backdrop-blur-md"
                                     >
+                                        {/* BADGE DE QUANTIDADE */}
+                                        {card.quantity > 1 && (
+                                            <div className="absolute -top-2 -right-2 bg-[#FFD60A] text-[#000814] rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shadow-lg">
+                                                {card.quantity}
+                                            </div>
+                                        )}
+
                                         <p className="text-center font-bold text-[#FFD60A] mb-2 tracking-wide">
                                             {card.name}
                                         </p>
 
-                                        <div className="w-full flex justify-center">
-                                            <img
-                                                src={card.img}
-                                                alt={card.name}
-                                                className="w-full h-auto rounded-lg shadow-lg"
-                                            />
+                                        <div className="w-full flex justify-center mb-2">
+                                            {card.img ? (
+                                                <img
+                                                    src={card.img}
+                                                    alt={card.name}
+                                                    className="w-full h-auto rounded-lg shadow-lg"
+                                                    onError={(e) => {
+                                                        e.target.src = "https://via.placeholder.com/150x200/001D3D/FFD60A?text=Carta";
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div className="w-full h-40 bg-[#003566] rounded-lg flex items-center justify-center">
+                                                    <span className="text-gray-400">Sem imagem</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* INFO DA CARTA */}
+                                        <div className="text-xs text-gray-300 mt-2">
+                                            <div className="flex justify-between">
+                                                <span>Tipo: <span className="text-[#FFD60A]">{card.type}</span></span>
+                                                <span>Custo: <span className="text-[#FFD60A]">{card.cost}</span></span>
+                                            </div>
+                                            {card.life !== null && (
+                                                <div>Vida: <span className="text-green-400">{card.life}</span></div>
+                                            )}
+                                            {card.attack !== null && (
+                                                <div>Ataque: <span className="text-red-400">{card.attack}</span></div>
+                                            )}
+                                            {card.defense !== null && (
+                                                <div>Defesa: <span className="text-blue-400">{card.defense}</span></div>
+                                            )}
                                         </div>
 
                                         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-4 h-4 bg-[#FFD60A] rounded-full shadow-[0_0_10px_#FFD60A]" />
                                     </motion.div>
                                 ))}
-                        </div>
+                            </div>
+                        )}
                     </>
                 )}
 
