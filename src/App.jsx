@@ -7,7 +7,8 @@ import Register from "./pages/Register/register.jsx";
 import GameHome from "./pages/GameHome/gameHome.jsx";
 import ProfileView from "./pages/GameHome/ProfileView/profileView.jsx";
 import CardsView from "./pages/GameHome/CardsView/cardsView.jsx";
-import EditDeck from "./pages/GameHome/CardsView/Decks/EditDeck.jsx"; // 🔴 IMPORTAÇÃO
+import EditDeck from "./pages/GameHome/CardsView/Decks/EditDeck.jsx";
+import GameModeSelect from "./pages/GameModeSelect/GameModeSelect";
 
 function App() {
   return (
@@ -35,6 +36,9 @@ function App() {
           path="/deck/edit/:playerId/:deckId" 
           element={<EditDeck />} 
         />
+        {/* Game Mode Select */}
+        <Route path="/mode-select" element={<GameModeSelect />} />
+  
       </Routes>
     </div>
   );
