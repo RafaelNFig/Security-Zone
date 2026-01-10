@@ -1,59 +1,117 @@
-import React, { useState } from 'react';
-import ModalAuth from "./modalAuth"; // Importe o modal
+import React, { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { Shield, Sparkles, Menu, X } from "lucide-react";
 
-export default function Navbar() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false); // Estado do modal aqui
+export default function Navbar({ sections = [], onOpenAuth = () => {} }) {
+  const [scrolled, setScrolled] = useState(false);
+  const [open, setOpen] = useState(false);
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 14);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const scrollTo = (id) => {
+    setOpen(false);
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   return (
-    <>
-      <nav className="fixed top-0 left-0 w-full bg-slate-900/80 backdrop-blur-md border-b border-slate-700 z-40">
-        
-        {/* Container Principal */}
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          
-          <h1 className="text-2xl font-bold text-cyan-400">Security Zone</h1>
-          
-          {/* Menu Padrão (Desktop) - EXATAMENTE IGUAL AO GameEx */}
-          <div className="hidden md:flex gap-8">
-            <button
-              onClick={() => setIsModalOpen(true)} // Direto igual no GameEx
-              className="px-6 py-3 rounded-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-extrabold uppercase tracking-wider shadow-lg shadow-yellow-500/30 hover:scale-105 transition-transform"
-            >
-              Jogar Agora 🎮
-            </button>
+    <header
+      className={[
+        "sticky top-0 z-50 border-b transition",
+        scrolled
+          ? "bg-slate-950/70 border-white/10 backdrop-blur"
+          : "bg-transparent border-transparent",
+      ].join(" ")}
+    >
+      <div className="mx-auto max-w-6xl px-4 sm:px-8 h-16 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="absolute -inset-2 rounded-full bg-emerald-400/15 blur-xl" />
+            <div className="relative flex items-center justify-center h-9 w-9 rounded-xl bg-white/5 border border-white/10">
+              <Shield className="h-5 w-5 text-emerald-300" />
+            </div>
           </div>
-          
-          {/* Botão Hamburguer (Mobile) */}
-          <button 
-            onClick={toggleMenu} 
-            className="md:hidden text-cyan-400 text-2xl focus:outline-none"
+          <div className="leading-tight">
+            <div className="font-extrabold tracking-tight">
+              SECURITY<span className="text-emerald-300">ZONE</span>
+            </div>
+            <div className="text-[11px] text-slate-300/70 uppercase tracking-widest">
+              cyber card game
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop */}
+        <nav className="hidden md:flex items-center gap-6">
+          {sections.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => scrollTo(s.id)}
+              className="text-sm text-slate-200/80 hover:text-slate-100 transition"
+            >
+              {s.label}
+            </button>
+          ))}
+
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={onOpenAuth}
+            className="relative inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold
+              bg-emerald-400/15 border border-emerald-300/30 text-emerald-100
+              shadow-[0_0_40px_rgba(16,185,129,0.20)]"
           >
-            {isMenuOpen ? '✕' : '☰'} 
-          </button>
-        </div>
+            <Sparkles className="h-4 w-4" />
+            Jogar agora
+            <span className="absolute inset-0 rounded-xl ring-1 ring-white/10" />
+          </motion.button>
+        </nav>
 
-        {/* Menu Mobile */}
-        <div 
-          className={`md:hidden ${isMenuOpen ? 'block' : 'hidden'} bg-slate-900 border-t border-slate-800`}
+        {/* Mobile */}
+        <button
+          className="md:hidden h-10 w-10 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center"
+          onClick={() => setOpen((v) => !v)}
         >
-          <div className="flex flex-col items-center py-4 space-y-3">
+          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
+      </div>
+
+      {/* Mobile menu */}
+      {open && (
+        <div className="md:hidden border-t border-white/10 bg-slate-950/80 backdrop-blur">
+          <div className="mx-auto max-w-6xl px-4 sm:px-8 py-4 flex flex-col gap-3">
+            {sections.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => scrollTo(s.id)}
+                className="text-left text-sm text-slate-200/80 hover:text-slate-100 transition"
+              >
+                {s.label}
+              </button>
+            ))}
+
             <button
-              onClick={() => setIsModalOpen(true)} // Direto igual no GameEx
-              className="px-6 py-3 rounded-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-extrabold uppercase tracking-wider shadow-lg shadow-yellow-500/30 hover:scale-105 transition-transform"
+              onClick={() => {
+                setOpen(false);
+                onOpenAuth();
+              }}
+              className="mt-2 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold
+                bg-emerald-400/15 border border-emerald-300/30 text-emerald-100"
             >
-              Jogar Agora 🎮
+              <Sparkles className="h-4 w-4" />
+              Jogar agora
             </button>
           </div>
         </div>
-      </nav>
+      )}
 
-      {/* Modal - EXATAMENTE IGUAL AO GameEx */}
-      {isModalOpen && <ModalAuth onClose={() => setIsModalOpen(false)} />}
-    </>
+      {/* Neon underline */}
+      <div className="h-px w-full bg-gradient-to-r from-emerald-400/0 via-emerald-400/40 to-emerald-400/0" />
+    </header>
   );
 }
