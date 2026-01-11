@@ -22,14 +22,12 @@ const EditProfile = ({ profile, onUpdateProfile }) => {
     PL_AVATAR: profile?.PL_AVATAR || ""
   });
 
-  // atualiza campos dinamicamente
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     formDataRef.current[name] = value;
     setInputValues(prev => ({ ...prev, [name]: value }));
   };
 
-  // abre modal de confirmação
   const handleSubmit = (e) => {
     e.preventDefault();
     setShowConfirmModal(true);
@@ -41,9 +39,7 @@ const EditProfile = ({ profile, onUpdateProfile }) => {
 
     try {
       const token = authUtils.getToken();
-      if (!token) {
-        throw new Error("Token inválido.");
-      }
+      if (!token) throw new Error("Token inválido.");
 
       const response = await fetch(`http://localhost:3000/api/player/profile`, {
         method: "PUT",
@@ -59,7 +55,6 @@ const EditProfile = ({ profile, onUpdateProfile }) => {
         throw new Error(data.error || "Erro ao atualizar perfil.");
       }
 
-      // atualiza o estado do profile no componente pai
       onUpdateProfile(data.player);
 
     } catch (err) {
@@ -78,7 +73,7 @@ const EditProfile = ({ profile, onUpdateProfile }) => {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
 
       {/* MODAL */}
       <ConfirmModal
@@ -93,36 +88,56 @@ const EditProfile = ({ profile, onUpdateProfile }) => {
       />
 
       {/* FORM */}
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+      <form
+        onSubmit={handleSubmit}
+        className="rounded-2xl border border-white/10
+                   bg-white/5 backdrop-blur
+                   shadow-[0_20px_80px_rgba(0,0,0,0.45)]
+                   p-6 flex flex-col gap-6"
+      >
 
         {/* USERNAME */}
         <div>
-          <label className="block text-gray-300 mb-2">Username</label>
-          <div className="flex items-center bg-slate-700 rounded-lg px-4 py-2">
+          <label className="block mb-2 text-[11px] font-mono uppercase tracking-[0.35em] text-slate-300/70">
+            Username
+          </label>
+          <div className="flex items-center gap-3
+                          rounded-xl bg-black/30 border border-white/10
+                          px-4 py-2.5
+                          focus-within:border-cyan-300/40 transition">
             <input
               type="text"
               name="PL_NAME"
               value={inputValues.PL_NAME}
               onChange={handleInputChange}
               placeholder="Your username"
-              className="flex-1 bg-transparent outline-none text-white placeholder-gray-400 disabled:opacity-50"
+              className="flex-1 bg-transparent outline-none
+                         text-slate-100 placeholder-slate-400/60
+                         disabled:opacity-50"
               disabled={loading}
             />
-            <Edit2 size={18} className="text-yellow-400" />
+            <Edit2 size={16} className="text-cyan-300/70" />
           </div>
         </div>
 
         {/* EMAIL */}
         <div>
-          <label className="block text-gray-300 mb-2">Email</label>
-          <div className="flex items-center bg-slate-700 rounded-lg px-4 py-2">
+          <label className="block mb-2 text-[11px] font-mono uppercase tracking-[0.35em] text-slate-300/70">
+            Email
+          </label>
+          <div className="flex items-center gap-3
+                          rounded-xl bg-black/30 border border-white/10
+                          px-4 py-2.5
+                          focus-within:border-emerald-300/40 transition">
             <input
               type="email"
               name="PL_EMAIL"
               value={inputValues.PL_EMAIL}
               onChange={handleInputChange}
               placeholder="you@email.com"
-              className="flex-1 bg-transparent outline-none text-white placeholder-gray-400 disabled:opacity-50"
+              className="flex-1 bg-transparent outline-none
+                         text-slate-100 placeholder-slate-400/60
+                         disabled:opacity-50"
               disabled={loading}
             />
           </div>
@@ -130,27 +145,39 @@ const EditProfile = ({ profile, onUpdateProfile }) => {
 
         {/* AVATAR */}
         <div>
-          <label className="block text-gray-300 mb-2">Avatar URL</label>
-          <div className="flex items-center bg-slate-700 rounded-lg px-4 py-2">
+          <label className="block mb-2 text-[11px] font-mono uppercase tracking-[0.35em] text-slate-300/70">
+            Avatar URL
+          </label>
+          <div className="flex items-center gap-3
+                          rounded-xl bg-black/30 border border-white/10
+                          px-4 py-2.5
+                          focus-within:border-yellow-300/40 transition">
             <input
               type="url"
               name="PL_AVATAR"
               value={inputValues.PL_AVATAR}
               onChange={handleInputChange}
               placeholder="https://example.com/avatar.jpg"
-              className="flex-1 bg-transparent outline-none text-white placeholder-gray-400 disabled:opacity-50"
+              className="flex-1 bg-transparent outline-none
+                         text-slate-100 placeholder-slate-400/60
+                         disabled:opacity-50"
               disabled={loading}
             />
-            <Edit2 size={18} className="text-yellow-400" />
+            <Edit2 size={16} className="text-yellow-300/70" />
           </div>
         </div>
 
         {/* BOTÃO DE SALVAR */}
-        <div className="mt-4 flex justify-end">
+        <div className="pt-2 flex justify-end">
           <button
             type="submit"
-            className="bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold px-8 py-2 rounded-lg transition disabled:opacity-50"
             disabled={loading}
+            className="px-8 py-2.5 rounded-xl font-extrabold transition
+                       bg-gradient-to-b from-[#FFD60A] to-[#FFC300]
+                       text-[#000814]
+                       shadow-lg shadow-yellow-500/30
+                       hover:shadow-yellow-500/50
+                       disabled:opacity-50"
           >
             {loading ? "Saving..." : "Save Changes"}
           </button>
@@ -158,7 +185,15 @@ const EditProfile = ({ profile, onUpdateProfile }) => {
       </form>
 
       {/* GOOGLE LINK */}
-      <GoogleLink profile={profile} onLinkSuccess={handleGoogleLinkSuccess} />
+      <div className="rounded-2xl border border-white/10
+                      bg-white/5 backdrop-blur
+                      shadow-[0_16px_60px_rgba(0,0,0,0.35)]
+                      p-6">
+        <GoogleLink
+          profile={profile}
+          onLinkSuccess={handleGoogleLinkSuccess}
+        />
+      </div>
 
     </div>
   );
