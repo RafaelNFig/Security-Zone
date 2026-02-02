@@ -386,11 +386,10 @@ const GameHome = () => {
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.92 }}
             onClick={toggleAudio}
-            className={`p-2 rounded-xl border transition ${
-              audioEnabled
+            className={`p-2 rounded-xl border transition ${audioEnabled
                 ? "bg-emerald-400/10 border-emerald-300/20 text-emerald-200"
                 : "bg-red-500/10 border-red-400/20 text-red-200"
-            }`}
+              }`}
             title="Áudio"
           >
             <Volume2 size={20} />
@@ -529,7 +528,7 @@ const GameHome = () => {
             </motion.div>
 
             <motion.button
-              onClick={() => navigate("/mode-select")}
+              onClick={() => navigate("/battle")}
               className="relative overflow-hidden rounded-2xl px-12 py-4 text-lg font-extrabold
                 bg-emerald-400/15 border border-emerald-300/30 text-emerald-100
                 shadow-[0_0_80px_rgba(16,185,129,0.25)]"
@@ -586,8 +585,8 @@ const GameHome = () => {
                       event.accent === "emerald"
                         ? "bg-emerald-300/80"
                         : event.accent === "cyan"
-                        ? "bg-cyan-300/80"
-                        : "bg-purple-300/80",
+                          ? "bg-cyan-300/80"
+                          : "bg-purple-300/80",
                     ].join(" ")}
                     initial={{ width: "0%" }}
                     animate={{ width: `${Math.random() * 60 + 20}%` }}
@@ -601,7 +600,7 @@ const GameHome = () => {
 
         {/* footer */}
         <div className="mt-10 text-center text-slate-300/60 text-xs font-mono">
-          Security Zone • v1.0.0 • 
+          Security Zone • v1.0.0 •
         </div>
       </div>
     </div>

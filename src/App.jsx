@@ -9,6 +9,7 @@ import ProfileView from "./pages/GameHome/ProfileView/profileView.jsx";
 import CardsView from "./pages/GameHome/CardsView/cardsView.jsx";
 import EditDeck from "./pages/GameHome/CardsView/Decks/EditDeck.jsx";
 import GameModeSelect from "./pages/GameModeSelect/GameModeSelect";
+import BattleArena from "./pages/BattleArena/battleArena.jsx";
 
 function App() {
   return (
@@ -38,6 +39,9 @@ function App() {
         />
         {/* Game Mode Select */}
         <Route path="/mode-select" element={<GameModeSelect />} />
+        
+        {/* Battle Arena */}
+        <Route path="/battle" element={<BattleArena />} />
   
       </Routes>
     </div>
