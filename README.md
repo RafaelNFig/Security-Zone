@@ -1,304 +1,152 @@
-## 🔐 Security Zone – Card Game Digital 🎮⚔️✨
+# 🔐 Security Zone – Arquitetura de Card Game Digital Educacional
 
-O Security Zone é um card game digital inspirado em títulos como Legends of Runeterra e Pokémon TCG, mas com um toque único: ele ensina, de forma divertida e estratégica, os perigos das redes Wi-Fi abertas e as ferramentas de proteção digital.
+## 📌 Visão Geral
 
-Cada carta representa uma ameaça cibernética, uma defesa tecnológica ou uma magia especial. O objetivo é reduzir a Vida Digital do adversário a 0, utilizando estratégia, ataque, defesa e efeitos especiais.
+O **Security Zone** é um card game digital multiplayer com finalidade educacional, inspirado em jogos como *Legends of Runeterra* e *Pokémon TCG*.  
 
-## 🛠️ Tecnologias Utilizadas
+O projeto foi concebido com o objetivo de unir **entretenimento e conscientização em segurança digital**, abordando de forma estratégica e interativa os riscos associados a redes Wi-Fi abertas e as principais ferramentas de proteção cibernética.
 
-[![Technologies](https://skillicons.dev/icons?i=react,js,html,css,tailwind,nodejs,express,mysql,prisma,figma,git,vscode,vite,firebase,websocket)](https://skillicons.dev)
+Cada carta representa:
 
-- **React + Vite** – Frontend moderno e rápido  
-- **Tailwind CSS** – Estilização responsiva e customizada  
-- **Node.js + Express** – Backend para lógica do jogo (opcional)  
-- **Firebase** – Banco de dados e funcionalidades distribuídas  
-- **MySQL + Prisma** – Persistência de dados estruturada  
-- **Git & VSCode** – Versionamento e desenvolvimento  
-- **Figma** – Design e prototipagem  
+- 🦠 Ameaças cibernéticas  
+- 🛡️ Mecanismos de defesa  
+- ✨ Efeitos e ações estratégicas  
 
-## 👍 Benefícios do Jogo
-
-🧠 **Educação Digital:** ensina conceitos de segurança em redes Wi-Fi abertas.
-
-🎮 **Diversão + Aprendizado:** mecânica de card game com propósito educativo.
-
-👥 **Multiplayer Local (futuro):** possibilidade de jogar em duplas ou 1x1.
-
-## 📜 Licença
-
-Este projeto está licenciado sob a Licença MIT. Consulte o arquivo [📜 LICENSE](LICENSE) para mais detalhes.
+O objetivo da partida é reduzir a **Vida Digital** do adversário a zero, respeitando regras formais de turno, validações estruturadas e aplicação de efeitos.
 
 ---
 
-## 👥 Devs
+## 🏗️ Arquitetura do Sistema
+
+O sistema foi desenvolvido com base em princípios de **Arquitetura Orientada a Serviços (SOA)**, garantindo:
+
+- Separação clara de responsabilidades  
+- Escalabilidade modular  
+- Facilidade de manutenção  
+- Isolamento de regras de negócio  
+
+### Estrutura Arquitetural
+
+Frontend (React + Vite)
+↓
+Gateway API (Node.js + Express)
+↓
+Match Service (Orquestração da Partida)
+↓
+Rules Service (Validação de Regras)
+↓
+MySQL (Persistência via Prisma ORM)
+
+
+---
+
+## 🔄 Fluxo de Comunicação
+
+1. O cliente (frontend) envia uma ação de jogo.
+2. O Gateway API autentica e encaminha a requisição.
+3. O Match Service gerencia o estado da partida.
+4. O Rules Service valida e aplica as regras do jogo.
+5. O resultado retorna ao frontend.
+6. Atualizações em tempo real são propagadas via WebSocket.
+
+Essa abordagem garante que **a lógica de regras permaneça desacoplada da interface**, mantendo o sistema coerente com boas práticas de engenharia de software.
+
+---
+
+## 🛠️ Tecnologias Utilizadas
+
+[![Technologies](https://skillicons.dev/icons?i=react,js,html,css,tailwind,nodejs,express,mysql,prisma,docker,nginx,git,vscode,vite,figma)](https://skillicons.dev)
+
+### 🎨 Frontend
+- React + Vite  
+- JavaScript (ESM)  
+- Tailwind CSS  
+- Comunicação via REST e WebSocket  
+
+### ⚙️ Backend
+- Node.js (padrão ESM)  
+- Express  
+- Prisma ORM  
+- MySQL  
+- WebSocket  
+
+### 🐳 Infraestrutura
+- Docker  
+- Docker Compose  
+- Nginx (Reverse Proxy)  
+- Containers isolados por serviço  
+
+---
+
+## 🧠 Organização dos Serviços
+
+### 🔹 Gateway API
+Responsável por:
+- Autenticação
+- Middleware de segurança
+- Encaminhamento de requisições
+- Comunicação WebSocket
+- Controle de sessão
+
+### 🔹 Match Service
+Responsável por:
+- Controle de turno
+- Gerenciamento do estado da partida
+- Orquestração das ações do jogador
+- Integração com bot automatizado
+
+### 🔹 Rules Service
+Responsável por:
+- Validação formal das regras
+- Verificação de decks
+- Aplicação de efeitos
+- Regras de combate
+- Garantia de integridade da partida
+
+---
+
+## 🎮 Funcionalidades Implementadas
+
+- ✔️ Sistema de criação e gerenciamento de decks  
+- ✔️ Validação de deck antes da partida  
+- ✔️ Controle estruturado de turnos  
+- ✔️ Execução de ataques e efeitos  
+- ✔️ Comunicação em tempo real  
+- ✔️ Integração com jogador automatizado (bot)  
+- ✔️ Persistência estruturada com Prisma  
+
+---
+
+## 🔐 Conceitos de Engenharia Aplicados
+
+- Arquitetura Orientada a Serviços (SOA)  
+- Separação de responsabilidades  
+- Comunicação entre microsserviços  
+- Validação centralizada de regras  
+- Persistência relacional  
+- Controle de estado distribuído  
+- Orquestração via Docker Compose  
+
+---
+
+## 🚧 Trabalhos Futuros
+
+- Refinamento das validações do Rules Service  
+- Ajuste completo de compatibilidade entre frontend e serviços  
+- Aprimoramento do sistema de autenticação  
+- Melhorias no tratamento de exceções e logs  
+- Otimizações de performance e escalabilidade  
+
+---
+
+## 📜 Licença
+
+Este projeto está licenciado sob a Licença MIT.  
+Consulte o arquivo `LICENSE` para mais detalhes.
+
+---
+
+## 👥 Desenvolvedores
 
 - Camila Lídia  
-- Rafael Figueiredo
-
-
-```
-Security-Zone
-├─ Infra
-│  ├─ docker
-│  │  ├─ frontend.Dockerfile
-│  │  └─ node.Dockerfile
-│  └─ nginx
-│     └─ default.conf
-├─ README.md
-├─ docker-compose.yml
-├─ frontend
-│  ├─ dist
-│  │  ├─ assets
-│  │  │  ├─ index-0ri-Tx85.css
-│  │  │  └─ index-Gnpqnpam.js
-│  │  ├─ img
-│  │  │  ├─ atualizacao.png
-│  │  │  ├─ capturapacotes.png
-│  │  │  ├─ detectarede.png
-│  │  │  ├─ escudo.png
-│  │  │  ├─ eviltwin.png
-│  │  │  ├─ firewall.png
-│  │  │  ├─ injecaoscript.png
-│  │  │  ├─ loginFake.png
-│  │  │  ├─ logoSZ.png
-│  │  │  ├─ malicioso.png
-│  │  │  ├─ modonavega.png
-│  │  │  ├─ senhaforte.png
-│  │  │  └─ vpn.png
-│  │  ├─ index.html
-│  │  └─ vite.svg
-│  ├─ eslint.config.js
-│  ├─ index.html
-│  ├─ package-lock.json
-│  ├─ package.json
-│  ├─ postcss.config.js
-│  ├─ public
-│  │  ├─ img
-│  │  │  └─ cards
-│  │  │     ├─ attsoftware.png
-│  │  │     ├─ backupseguro.png
-│  │  │     ├─ capturapacotes.png
-│  │  │     ├─ decredesfalsas.png
-│  │  │     ├─ engsocial.png
-│  │  │     ├─ escudodigital.png
-│  │  │     ├─ eviltwin.png
-│  │  │     ├─ exploracaoapi.png
-│  │  │     ├─ fakelogin.png
-│  │  │     ├─ firewall.png
-│  │  │     ├─ forcabruta.png
-│  │  │     ├─ injecaoscript.png
-│  │  │     ├─ logsauditoria.png
-│  │  │     ├─ malicioso.png
-│  │  │     ├─ manmiddle.png
-│  │  │     ├─ modonavsegura.png
-│  │  │     ├─ pontofantasma.png
-│  │  │     ├─ quebraautorizacao.png
-│  │  │     ├─ senhaforte.png
-│  │  │     ├─ verso.png
-│  │  │     └─ vpnativada.png
-│  │  └─ vite.svg
-│  ├─ src
-│  │  ├─ App.css
-│  │  ├─ App.jsx
-│  │  ├─ assets
-│  │  │  └─ react.svg
-│  │  ├─ firebase
-│  │  │  ├─ auth.js
-│  │  │  ├─ config.js
-│  │  │  └─ context.js
-│  │  ├─ index.css
-│  │  ├─ main.jsx
-│  │  ├─ pages
-│  │  │  ├─ BattleArena
-│  │  │  │  ├─ battleArena.jsx
-│  │  │  │  ├─ components
-│  │  │  │  │  ├─ ActionBar.jsx
-│  │  │  │  │  ├─ ArenaHeader.jsx
-│  │  │  │  │  ├─ Board.jsx
-│  │  │  │  │  ├─ BoardSlot.jsx
-│  │  │  │  │  ├─ CardPreview.jsx
-│  │  │  │  │  ├─ EndTurnButton.jsx
-│  │  │  │  │  ├─ EnergyOrb.jsx
-│  │  │  │  │  ├─ EventLog.jsx
-│  │  │  │  │  ├─ HandCarousel.jsx
-│  │  │  │  │  ├─ Overlays
-│  │  │  │  │  │  ├─ ConfirmActionModal.jsx
-│  │  │  │  │  │  └─ TargetPickerModal.jsx
-│  │  │  │  │  ├─ Stage.jsx
-│  │  │  │  │  └─ ZoneCard.jsx
-│  │  │  │  ├─ hooks
-│  │  │  │  │  ├─ useActionQueue.js
-│  │  │  │  │  ├─ useMatchSession.js
-│  │  │  │  │  └─ useSelections.js
-│  │  │  │  └─ utils
-│  │  │  │     ├─ actionBuilders.js
-│  │  │  │     ├─ mappers.js
-│  │  │  │     └─ stateSelectors.js
-│  │  │  ├─ GameHome
-│  │  │  │  ├─ CardsView
-│  │  │  │  │  ├─ Decks
-│  │  │  │  │  │  ├─ CreateDeck.jsx
-│  │  │  │  │  │  ├─ DeckActions.jsx
-│  │  │  │  │  │  ├─ EditDeck.jsx
-│  │  │  │  │  │  └─ decksView.jsx
-│  │  │  │  │  └─ cardsView.jsx
-│  │  │  │  ├─ ProfileView
-│  │  │  │  │  ├─ components
-│  │  │  │  │  │  ├─ ConfirmModal
-│  │  │  │  │  │  │  └─ confirmModal.jsx
-│  │  │  │  │  │  ├─ EditProfile
-│  │  │  │  │  │  │  └─ editProfile.jsx
-│  │  │  │  │  │  ├─ GoogleLink
-│  │  │  │  │  │  │  └─ googleLink.jsx
-│  │  │  │  │  │  ├─ ProfileHistory
-│  │  │  │  │  │  │  └─ profileHistory.jsx
-│  │  │  │  │  │  └─ ProfileSettings
-│  │  │  │  │  │     └─ profileSettings.jsx
-│  │  │  │  │  ├─ hooks
-│  │  │  │  │  │  └─ useProfile.js
-│  │  │  │  │  └─ profileView.jsx
-│  │  │  │  └─ gameHome.jsx
-│  │  │  ├─ GameModeSelect
-│  │  │  │  ├─ GameModeSelect.jsx
-│  │  │  │  └─ components
-│  │  │  │     ├─ BotSelectModal.jsx
-│  │  │  │     └─ DeckPickerFooter.jsx
-│  │  │  ├─ LandingPage
-│  │  │  │  ├─ components
-│  │  │  │  │  ├─ carrosel.jsx
-│  │  │  │  │  ├─ descriptions.jsx
-│  │  │  │  │  ├─ footer.jsx
-│  │  │  │  │  ├─ gameEx.jsx
-│  │  │  │  │  ├─ modalAuth.jsx
-│  │  │  │  │  └─ navbar.jsx
-│  │  │  │  └─ landingpage.jsx
-│  │  │  ├─ Login
-│  │  │  │  └─ login.jsx
-│  │  │  └─ Register
-│  │  │     └─ register.jsx
-│  │  ├─ services
-│  │  │  └─ api.js
-│  │  └─ utils
-│  │     └─ auth.js
-│  ├─ tailwind.config.js
-│  └─ vite.config.js
-├─ services
-│  ├─ bot-service
-│  │  ├─ .env
-│  │  ├─ .env.example
-│  │  ├─ Dockerfile
-│  │  ├─ eslint.config.js
-│  │  ├─ package-lock.json
-│  │  ├─ package.json
-│  │  └─ src
-│  │     ├─ ai
-│  │     │  ├─ botEasy.js
-│  │     │  └─ botNormal.js
-│  │     ├─ controllers
-│  │     │  └─ botControllers.js
-│  │     ├─ routes
-│  │     │  └─ botRoutes.js
-│  │     └─ server.js
-│  ├─ gateway-api
-│  │  ├─ .env
-│  │  ├─ .env.example
-│  │  ├─ Dockerfile
-│  │  ├─ eslint.config.js
-│  │  ├─ package-lock.json
-│  │  ├─ package.json
-│  │  ├─ prisma
-│  │  │  ├─ migrations
-│  │  │  │  └─ migration_lock.toml
-│  │  │  ├─ schema.prisma
-│  │  │  ├─ seed.js
-│  │  │  └─ seedUsersBotsDecks.js
-│  │  └─ src
-│  │     ├─ config
-│  │     │  └─ firebaseAdmin.js
-│  │     ├─ controllers
-│  │     │  ├─ authController.js
-│  │     │  ├─ deckController.js
-│  │     │  ├─ internalDeckController.js
-│  │     │  ├─ matchProxyController.js
-│  │     │  └─ playerController.js
-│  │     ├─ middleware
-│  │     │  └─ authMiddleware.js
-│  │     ├─ prismaClient.js
-│  │     ├─ routes
-│  │     │  ├─ authRoutes.js
-│  │     │  ├─ cardsPublicRoutes.js
-│  │     │  ├─ deckRoutes.js
-│  │     │  ├─ internalRoutes.js
-│  │     │  ├─ matchRoutes.js
-│  │     │  ├─ playerRoutes.js
-│  │     │  └─ profile.js
-│  │     ├─ server.js
-│  │     └─ utils
-│  │        ├─ httpClient.js
-│  │        └─ jwtUtils.js
-│  ├─ match-service
-│  │  ├─ .env
-│  │  ├─ .env.example
-│  │  ├─ Dockerfile
-│  │  ├─ eslint.config.js
-│  │  ├─ package-lock.json
-│  │  ├─ package.json
-│  │  ├─ prisma
-│  │  │  └─ schema.prisma
-│  │  └─ src
-│  │     ├─ controllers
-│  │     │  └─ matchController.js
-│  │     ├─ prismaClient.js
-│  │     ├─ routes
-│  │     │  └─ matchRoutes.js
-│  │     ├─ server.js
-│  │     └─ services
-│  │        ├─ botClient.js
-│  │        ├─ gatewayClient.js
-│  │        ├─ rulesClient.js
-│  │        └─ stateService.js
-│  └─ rules-service
-│     ├─ .env
-│     ├─ .env.example
-│     ├─ Dockerfile
-│     ├─ eslint.config.js
-│     ├─ package-lock.json
-│     ├─ package.json
-│     └─ src
-│        ├─ controllers
-│        │  └─ rulesController.js
-│        ├─ engine
-│        │  ├─ endTurn.js
-│        │  ├─ resolveAbility.js
-│        │  ├─ resolveAttack.js
-│        │  ├─ resolvePlayCard.js
-│        │  ├─ resolveSpell.js
-│        │  └─ validateAction.js
-│        ├─ routes
-│        │  └─ rulesRoutes.js
-│        └─ server.js
-└─ src
-   └─ pages
-      └─ BattleArena
-         ├─ battleArena.jsx
-         ├─ components
-         │  ├─ ActionBar.jsx
-         │  ├─ ArenaHeader.jsx
-         │  ├─ Board.jsx
-         │  ├─ BoardSlot.jsx
-         │  ├─ CardPreview.jsx
-         │  ├─ EventLog.jsx
-         │  ├─ HandCarousel.jsx
-         │  └─ Overlays
-         │     ├─ ConfirmActionModal.jsx
-         │     └─ TargetPickerModal.jsx
-         ├─ hooks
-         │  ├─ useActionQueue.js
-         │  ├─ useMatchSession.js
-         │  └─ useSelections.js
-         └─ utils
-            ├─ actionBuilders.js
-            ├─ mappers.js
-            └─ stateSelectors.js
-
-```
+- Rafael Figueiredo  
