@@ -1,0 +1,360 @@
+// prisma/schema.prisma
+// Atualizado para suportar: regras + cartas (efeitos), e arquitetura distribuída Tier 1.5
+// Stack: Node/Express + Prisma + MySQL (+ serviços Match/Rules/Bot/Gateway)
+//
+// Observação: Estado "quente" da partida pode ficar em Redis no Match Service.
+// Este schema guarda: usuários/decks/cartas + metadados da partida + snapshots/eventos + idempotência.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum MatchStatus {
+  RUNNING
+  ENDED
+  ABORTED
+}
+
+enum MatchMode {
+  BOT
+  PVP
+}
+
+enum CardType {
+  UNIT // carta de campo (ocupa slot)
+  SPELL // magia instantânea (não ocupa slot)
+}
+
+enum ServiceRole {
+  GATEWAY
+  MATCH
+  RULES
+  BOT
+}
+
+/**
+ * =========================
+ * PLAYER / ACCOUNT
+ * =========================
+ */
+
+model Player {
+  PL_ID    Int    @id @default(autoincrement()) @map("PL_ID")
+  PL_NAME  String @unique @map("PL_NAME") @db.VarChar(45)
+  PL_EMAIL String @unique @map("PL_EMAIL") @db.VarChar(100)
+
+  // Se você usa só Firebase, pode manter PL_PASSWORD_HASH vazio/null futuramente.
+  PL_PASSWORD_HASH String @map("PL_PASSWORD_HASH") @db.VarChar(255)
+
+  PL_FIREBASE_UID  String? @unique @map("PL_FIREBASE_UID") @db.VarChar(255)
+  PL_AUTH_PROVIDER String? @map("PL_AUTH_PROVIDER") @db.VarChar(50)
+
+  PL_COINS  Int     @default(0) @map("PL_COINS")
+  PL_GEMS   Int     @default(0) @map("PL_GEMS")
+  PL_LEVEL  Int     @default(1) @map("PL_LEVEL")
+  PL_AVATAR String? @map("PL_AVATAR") @db.VarChar(255)
+
+  // ✅ IMPORTANTE: vida do jogador na PARTIDA não deve vir daqui.
+  // Mantemos como "vida base" (ou cosmético) para não quebrar seu sistema atual.
+  PL_LIFE Int @default(100) @map("PL_LIFE")
+
+  PL_ACTIVE_DECK_COUNT Int      @default(0) @map("PL_ACTIVE_DECK_COUNT")
+  PL_CREATED_AT        DateTime @default(now()) @map("PL_CREATED_AT")
+
+  // Relações
+  decks               Deck[]
+  matchesWon          Match[]       @relation("MatchWinner")
+  matchesParticipated MatchPlayer[]
+  inventory           PlayerCard[]
+
+  // ✅ FALTAVA ISSO (lado inverso de MatchAction.player)
+  matchActions MatchAction[]
+
+  @@map("PLAYER")
+}
+
+/**
+ * =========================
+ * CARDS / EFFECTS
+ * =========================
+ */
+
+model Card {
+  CD_ID   Int    @id @default(autoincrement()) @map("CD_ID")
+  CD_NAME String @unique @map("CD_NAME") @db.VarChar(100)
+
+  // ✅ RENOMEADO: antes CD_DESCRIPTION
+  CD_HABILITY String @map("CD_HABILITY") @db.VarChar(255)
+
+  // UNIT ou SPELL
+  CD_TYPE CardType @map("CD_TYPE")
+
+  CD_COST Int @map("CD_COST")
+
+  // Stats (UNIT)
+  CD_LIFE    Int? @map("CD_LIFE")
+  CD_ATTACK  Int? @map("CD_ATTACK")
+  CD_DEFENSE Int? @map("CD_DEFENSE")
+
+  CD_IMAGE             String? @map("CD_IMAGE") @db.VarChar(255)
+  CD_MAX_IN_DECK       Int     @default(3) @map("CD_MAX_IN_DECK")
+  CD_MAX_IN_COLLECTION Int     @default(4) @map("CD_MAX_IN_COLLECTION")
+
+  // ✅ EFEITOS / HABILIDADES / PARÂMETROS
+  // Exemplo:
+  // { "kind":"IGNORE_DEF", "value":20, "trigger":"ON_ATTACK" }
+  // { "kind":"REVEAL_HAND", "duration":"END_OF_TURN" }
+  // { "kind":"SPLIT_DAMAGE", "maxTargets":2 }
+  CD_EFFECT_JSON Json? @map("CD_EFFECT_JSON")
+
+  // Flags opcionais que ajudam na engine (sem depender só do JSON)
+  CD_HAS_ABILITY        Boolean @default(false) @map("CD_HAS_ABILITY") // unidade tem habilidade ativa?
+  CD_ABILITY_COST       Int?    @map("CD_ABILITY_COST") // 0-3 (0=passiva)
+  CD_ABILITY_LIMIT_JSON Json?   @map("CD_ABILITY_LIMIT_JSON") // ex: { "per":"TURN", "times":1 }
+
+  // Relações
+  inDecks       DeckCard[]
+  inInventories PlayerCard[]
+
+  @@map("CARDS")
+}
+
+/**
+ * =========================
+ * INVENTORY / DECKS
+ * =========================
+ */
+
+model PlayerCard {
+  PLAYER_PL_ID   Int @map("PLAYER_PL_ID")
+  CARDS_CD_ID    Int @map("CARDS_CD_ID")
+  PL_CD_QUANTITY Int @map("PL_CD_QUANTITY")
+
+  card   Card   @relation(fields: [CARDS_CD_ID], references: [CD_ID])
+  player Player @relation(fields: [PLAYER_PL_ID], references: [PL_ID])
+
+  @@id([PLAYER_PL_ID, CARDS_CD_ID])
+  @@index([CARDS_CD_ID], map: "PLAYER_CARD_CARDS_CD_ID_fkey")
+  @@map("PLAYER_CARD")
+}
+
+model Deck {
+  DECK_ID         Int      @id @default(autoincrement()) @map("DECK_ID")
+  DECK_NAME       String   @map("DECK_NAME") @db.VarChar(100)
+  DECK_IS_ACTIVE  Boolean  @default(false) @map("DECK_IS_ACTIVE")
+  PLAYER_PL_ID    Int      @map("PLAYER_PL_ID")
+  DECK_CREATED_AT DateTime @default(now()) @map("DECK_CREATED_AT")
+
+  // ✅ LIMITE TOTAL DE CARTAS NO DECK (somatório de DECK_CD_QUANTITY)
+  // Observação: MySQL/Prisma não garante esse limite por constraint agregada aqui.
+  // A validação deve ser aplicada no serviço (API) e/ou via trigger no banco.
+  DECK_MAX_CARDS  Int      @default(20) @map("DECK_MAX_CARDS")
+
+  player        Player        @relation(fields: [PLAYER_PL_ID], references: [PL_ID])
+  cardsInDeck   DeckCard[]    @relation("DeckToDeckCard")
+  matchesUsedIn MatchPlayer[] @relation("DeckToMatchPlayer")
+
+  @@unique([PLAYER_PL_ID, DECK_NAME])
+  @@map("DECK")
+}
+
+model DeckCard {
+  DECK_ID          Int  @map("DECK_ID")
+  CARDS_CD_ID      Int  @map("CARDS_CD_ID")
+  DECK_CD_QUANTITY Int  @default(1) @map("DECK_CD_QUANTITY")
+  DECK_CD_POSITION Int? @map("DECK_CD_POSITION") // opcional: posição fixa no deck, se você tiver modo "ordenado"
+
+  card Card @relation(fields: [CARDS_CD_ID], references: [CD_ID])
+  deck Deck @relation("DeckToDeckCard", fields: [DECK_ID], references: [DECK_ID])
+
+  @@id([DECK_ID, CARDS_CD_ID])
+  @@index([DECK_ID])
+  @@index([CARDS_CD_ID])
+  @@map("DECK_CARD")
+}
+
+/**
+ * =========================
+ * MATCHES / DISTRIBUTED (Tier 1.5)
+ * - Match Service grava metadados + snapshots + eventos
+ * - Rules Service é stateless, mas eventos/snapshots vão pro DB via Match Service
+ * =========================
+ */
+
+model Match {
+  MATCH_ID      Int       @id @default(autoincrement()) @map("MT_ID")
+  MT_START_TIME DateTime  @default(now()) @map("MT_START_TIME")
+  MT_END_TIME   DateTime? @map("MT_END_TIME")
+
+  // BOT / PVP
+  MT_MODE MatchMode @default(BOT) @map("MT_MODE")
+
+  // Tipo livre se você quiser: "RANKED", "CASUAL", etc.
+  MT_TYPE String @default("CASUAL") @map("MT_TYPE") @db.VarChar(50)
+
+  MT_STATUS MatchStatus @default(RUNNING) @map("MT_STATUS")
+
+  // Turno e controle de concorrência (online-ready)
+  MT_TURN_PLAYER  Int?    @map("MT_TURN_PLAYER") // PLAYER_ID (ou null se encerrado)
+  MT_TURN_NUMBER  Int     @default(1) @map("MT_TURN_NUMBER")
+  MT_PHASE        String  @default("MAIN") @map("MT_PHASE") @db.VarChar(20) // DRAW|MAIN|ENDED (controle alto nível)
+  MT_HAS_ATTACKED Boolean @default(false) @map("MT_HAS_ATTACKED") // 1 ataque por turno
+
+  // Versionamento do estado (otimiza consistência e idempotência)
+  MT_STATE_VER Int @default(0) @map("MT_STATE_VER")
+
+  // Reprodutibilidade do shuffle (debug/replay)
+  MT_SHUFFLE_SEED String? @map("MT_SHUFFLE_SEED") @db.VarChar(64)
+
+  // Vencedor
+  MT_WINNER_ID Int?    @map("MT_WINNER_ID")
+  winner       Player? @relation("MatchWinner", fields: [MT_WINNER_ID], references: [PL_ID])
+
+  // Participantes / logs
+  participants MatchPlayer[]
+  bot          MatchBot?
+  states       MatchState[]
+  events       MatchEvent[]
+  actions      MatchAction[]
+
+  @@index([MT_WINNER_ID], map: "MATCH_MT_WINNER_ID_fkey")
+  @@index([MT_TURN_PLAYER])
+  @@map("MATCH")
+}
+
+model MatchPlayer {
+  MATCH_ID     Int @map("MATCH_ID")
+  PLAYER_ID    Int @map("PLAYER_ID")
+  DECK_USED_ID Int @map("DECK_USED_ID")
+
+  // Resultado final (vida na partida, não no Player)
+  MT_PL_FINAL_LIFE Int     @default(0) @map("MT_PL_FINAL_LIFE")
+  MT_PL_IS_WINNER  Boolean @default(false) @map("MT_PL_IS_WINNER")
+
+  deckUsed Deck   @relation("DeckToMatchPlayer", fields: [DECK_USED_ID], references: [DECK_ID])
+  match    Match  @relation(fields: [MATCH_ID], references: [MATCH_ID])
+  player   Player @relation(fields: [PLAYER_ID], references: [PL_ID])
+
+  @@id([MATCH_ID, PLAYER_ID])
+  @@index([DECK_USED_ID], map: "MATCH_PLAYER_DECK_USED_ID_fkey")
+  @@index([PLAYER_ID], map: "MATCH_PLAYER_PLAYER_ID_fkey")
+  @@map("MATCH_PLAYER")
+}
+
+/**
+ * =========================
+ * BOT CONFIG (para MT_MODE=BOT)
+ * =========================
+ */
+
+model MatchBot {
+  MB_ID    Int @id @default(autoincrement()) @map("MB_ID")
+  MATCH_ID Int @unique @map("MATCH_ID")
+
+  // Ex: "easy" | "normal" | "hard"
+  MB_LEVEL String @default("easy") @map("MB_LEVEL") @db.VarChar(20)
+
+  // Caso você queira escolher um deck específico do bot:
+  // Pode ser um deck "sistema" (não pertence a Player) ou um deck fixo por lista.
+  MB_DECK_CODE String? @map("MB_DECK_CODE") @db.VarChar(100)
+
+  // Pode guardar parâmetros do bot (agressivo, defensivo, seed própria)
+  MB_CONFIG_JSON Json? @map("MB_CONFIG_JSON")
+
+  match Match @relation(fields: [MATCH_ID], references: [MATCH_ID])
+
+  @@map("MATCH_BOT")
+}
+
+/**
+ * =========================
+ * SNAPSHOTS / EVENTS / IDEMPOTENCY
+ * =========================
+ */
+
+model MatchState {
+  MS_ID    Int @id @default(autoincrement()) @map("MS_ID")
+  MATCH_ID Int @map("MATCH_ID")
+
+  // versão do estado após uma ação (ou após tick do turno)
+  MS_VERSION Int @map("MS_VERSION")
+
+  // Estado completo (inclui: vida=100, energiaMax/energia, mão/deck/cemitério,
+  // board com 3 slots, efeitos temporários, flags do turno, etc.)
+  MS_STATE_JSON Json @map("MS_STATE_JSON")
+
+  MS_CREATED_AT DateTime @default(now()) @map("MS_CREATED_AT")
+
+  match Match @relation(fields: [MATCH_ID], references: [MATCH_ID])
+
+  @@unique([MATCH_ID, MS_VERSION])
+  @@index([MATCH_ID])
+  @@map("MATCH_STATE")
+}
+
+model MatchEvent {
+  ME_ID    Int @id @default(autoincrement()) @map("ME_ID")
+  MATCH_ID Int @map("MATCH_ID")
+
+  // versão do state que este evento corresponde (normalmente a versão após aplicar ação)
+  ME_VERSION Int @map("ME_VERSION")
+
+  // Ex: DRAW, PLAY_CARD, CAST_SPELL, ATTACK, DAMAGE, CARD_DIED, OVERFLOW_DAMAGE, REVEAL_HAND...
+  ME_TYPE    String @map("ME_TYPE") @db.VarChar(50)
+  ME_PAYLOAD Json   @map("ME_PAYLOAD")
+
+  ME_CREATED_AT DateTime @default(now()) @map("ME_CREATED_AT")
+
+  match Match @relation(fields: [MATCH_ID], references: [MATCH_ID])
+
+  @@index([MATCH_ID, ME_VERSION])
+  @@map("MATCH_EVENT")
+}
+
+model MatchAction {
+  MA_ID     Int @id @default(autoincrement()) @map("MA_ID")
+  MATCH_ID  Int @map("MATCH_ID")
+  PLAYER_ID Int @map("PLAYER_ID")
+
+  // idempotência (uuid vindo do client)
+  MA_ACTION_ID String @unique @map("MA_ACTION_ID") @db.VarChar(64)
+
+  // ação enviada (ex: ATTACK com attackerSlot, etc.)
+  MA_ACTION Json @map("MA_ACTION")
+
+  // versão do state que o client dizia estar vendo
+  MA_CLIENT_VER Int @default(0) @map("MA_CLIENT_VER")
+
+  MA_CREATED_AT DateTime @default(now()) @map("MA_CREATED_AT")
+
+  match  Match  @relation(fields: [MATCH_ID], references: [MATCH_ID])
+  player Player @relation(fields: [PLAYER_ID], references: [PL_ID])
+
+  @@index([MATCH_ID])
+  @@index([PLAYER_ID])
+  @@map("MATCH_ACTION")
+}
+
+/**
+ * =========================
+ * (Opcional) REGISTRY de serviços (para observabilidade / demo)
+ * Ajuda na apresentação do Tier 1.5: mostra serviços vivos e versão
+ * =========================
+ */
+
+model ServiceInstance {
+  SI_ID        Int         @id @default(autoincrement()) @map("SI_ID")
+  SI_ROLE      ServiceRole @map("SI_ROLE")
+  SI_NAME      String      @map("SI_NAME") @db.VarChar(50) // ex: "rules-1"
+  SI_VERSION   String      @map("SI_VERSION") @db.VarChar(30)
+  SI_LAST_SEEN DateTime    @default(now()) @map("SI_LAST_SEEN")
+  SI_META_JSON Json?       @map("SI_META_JSON")
+
+  @@index([SI_ROLE])
+  @@map("SERVICE_INSTANCE")
+}

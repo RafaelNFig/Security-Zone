@@ -1,0 +1,206 @@
+name: security-zone
+
+networks:
+  sz_net:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  frontend_node_modules:
+
+services:
+  # =========================================================
+  # 1) DATABASE (MySQL)
+  # =========================================================
+  db:
+    image: mysql:8.0
+    container_name: security-zone-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: security_zone
+      TZ: America/Recife
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - sz_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # =========================================================
+  # 2) PRISMA (job) - roda migrations + seed e sai
+  # =========================================================
+  prisma:
+    container_name: security-zone-prisma
+    build:
+      context: ./services/gateway-api
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: mysql://root:root@db:3306/security_zone
+    command: >
+      sh -c "
+        npx prisma generate &&
+        npx prisma db push &&
+        node prisma/seed.js
+      "
+    restart: "no"
+    networks:
+      - sz_net
+
+  # =========================================================
+  # 3) GATEWAY API (porta interna 3000)
+  # =========================================================
+  gateway-api:
+    container_name: security-zone-gateway
+    build:
+      context: ./services/gateway-api
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+      prisma:
+        condition: service_completed_successfully
+    env_file:
+      - ./services/gateway-api/.env
+    environment:
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: 3000
+
+      DATABASE_URL: mysql://root:root@db:3306/security_zone
+
+      # ✅ origem real via nginx
+      FRONTEND_URL: http://security-zone.local
+      CORS_ORIGIN: http://security-zone.local
+
+      MATCH_SERVICE_URL: http://match-service:3001
+      MATCH_PROXY_TIMEOUT_MS: 12000
+    expose:
+      - "3000"
+    restart: unless-stopped
+    networks:
+      - sz_net
+
+  # =========================================================
+  # 4) MATCH SERVICE (porta interna 3001)
+  # =========================================================
+  match-service:
+    container_name: security-zone-match
+    build:
+      context: ./services/match-service
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/match-service/.env
+    environment:
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: 3001
+
+      RULES_SERVICE_URL: http://rules-service:3002
+      BOT_SERVICE_URL: http://bot-service:3003
+
+      GATEWAY_URL: http://gateway-api:3000
+    expose:
+      - "3001"
+    restart: unless-stopped
+    networks:
+      - sz_net
+
+  # =========================================================
+  # 5) RULES SERVICE (porta interna 3002)
+  # =========================================================
+  rules-service:
+    container_name: security-zone-rules
+    build:
+      context: ./services/rules-service
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/rules-service/.env
+    environment:
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: 3002
+    expose:
+      - "3002"
+    restart: unless-stopped
+    networks:
+      - sz_net
+
+  # =========================================================
+  # 6) BOT SERVICE (porta interna 3003)
+  # =========================================================
+  bot-service:
+    container_name: security-zone-bot
+    build:
+      context: ./services/bot-service
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/bot-service/.env
+    environment:
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: 3003
+    expose:
+      - "3003"
+    restart: unless-stopped
+    networks:
+      - sz_net
+
+  # =========================================================
+  # 7) FRONTEND (Vite dev server) - DEV
+  # =========================================================
+  frontend:
+    container_name: security-zone-frontend
+    build:
+      context: ./frontend
+      dockerfile: ../Infra/docker/frontend.Dockerfile
+    depends_on:
+      gateway-api:
+        condition: service_started
+    environment:
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: 5173
+
+      # ✅ Vite/WSL/Docker: evita crash/loop por file watcher
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+
+      # ✅ garante que o front aponte pro nginx (/api)
+      VITE_API_BASE_URL: "/api"
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173", "--strictPort"]
+    expose:
+      - "5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    restart: unless-stopped
+    networks:
+      - sz_net
+
+  # =========================================================
+  # 8) NGINX (Reverse Proxy + entrada única)
+  # =========================================================
+  nginx:
+    image: nginx:latest
+    container_name: security-zone-nginx
+    depends_on:
+      - frontend
+      - gateway-api
+      - match-service
+      - rules-service
+      - bot-service
+    ports:
+      - "80:80"
+    volumes:
+      - ./Infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+    networks:
+      - sz_net

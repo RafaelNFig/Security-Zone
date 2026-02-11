@@ -1,0 +1,20 @@
+{
+  "name": "match-service",
+  "version": "1.0.0",
+  "description": "Match Service - Orquestrador/stateful - SecurityZone Card Game",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}
