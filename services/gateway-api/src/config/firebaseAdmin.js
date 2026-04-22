@@ -1,5 +1,5 @@
-/* eslint-env node */
 import admin from "firebase-admin";
+import jwt from "jsonwebtoken";
 
 /**
  * -----------------------------------------------------------
@@ -117,16 +117,23 @@ class FirebaseAdmin {
    * (mas o ideal é o middleware decidir isso — aqui só oferecemos a opção)
    */
   async verifyIdToken(idToken) {
-    // Bypass opcional de DEV: útil para testar gateway sem front/fb
+    // Bypass opcional de DEV ou falha de Firebase local: extrai payload do token oficial fornecido pelo Frontend
     if (!this.initialized) {
-      if (this.devBypass && process.env.NODE_ENV === "development") {
-        // formato compatível com decoded token do firebase
-        return {
-          uid: "dev-user",
-          email: "dev@local.test",
-          name: "Dev User",
-          firebase: { sign_in_provider: "dev-bypass" },
-        };
+      if (process.env.NODE_ENV === "development") {
+        console.warn("🧪 Modo DEV sem Firebase Admin: Decodificando token apenas para teste local.");
+        try {
+          const decodedPayload = jwt.decode(idToken);
+          if (decodedPayload) {
+            return {
+              uid: decodedPayload.user_id || decodedPayload.sub || "dev-user",
+              email: decodedPayload.email || "dev@local.test",
+              name: decodedPayload.name || "Dev User",
+              firebase: { sign_in_provider: decodedPayload?.firebase?.sign_in_provider || "google.com" },
+            };
+          }
+        } catch (e) {
+          console.warn("Falha ao decodificar token do Firebase no modo DEV:", e.message);
+        }
       }
       throw new Error("FIREBASE_ADMIN_NOT_INITIALIZED");
     }

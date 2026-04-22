@@ -4,6 +4,7 @@
 import prisma from "../prismaClient.js";
 import { generateToken as generateJWT } from "../utils/jwtUtils.js";
 import firebaseAdmin from "../config/firebaseAdmin.js";
+import { provisionNewPlayer } from "../services/newPlayerProvisioningService.js";
 
 const IS_PROD = String(process.env.NODE_ENV || "").toLowerCase() === "production";
 
@@ -145,7 +146,7 @@ class AuthController {
 
       const username = await AuthController.generateUniqueUsername(baseName);
 
-      return await prisma.player.create({
+      const newPlayer = await prisma.player.create({
         data: {
           PL_NAME: username,
           PL_EMAIL: safeEmail,
@@ -164,6 +165,15 @@ class AuthController {
         },
         select: AuthController.getPlayerSelectFields(),
       });
+
+      // Provisiona inventário completo + decks iniciais para o novo jogador
+      try {
+        await provisionNewPlayer(newPlayer.PL_ID);
+      } catch (provErr) {
+        console.error(`❌ [Provisioning] Falha ao provisionar player Firebase ${newPlayer.PL_ID}:`, provErr);
+      }
+
+      return newPlayer;
     } catch (error) {
       console.error("❌ Erro no findOrCreatePlayerFromFirebase:", error);
       throw new Error("PLAYER_UPSERT_FAILED");

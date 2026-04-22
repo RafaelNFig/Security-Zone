@@ -1,5 +1,5 @@
 // src/pages/Login/login.jsx
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { authUtils } from "../../utils/auth.js";
 import { useAuth } from "../../firebase/auth.js";
@@ -13,7 +13,11 @@ export default function Login() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
-  const [error, setError] = useState("");
+  const [searchParams] = useSearchParams();
+  
+  // Exibição inicial focada no erro da URL caso presente (ex: ?reason=expired)
+  const initialError = searchParams.get("reason") === "expired" ? "Sua sessão expirou. Faça login novamente." : "";
+  const [error, setError] = useState(initialError);
 
   const { loading: googleLoading, loginWithGoogle } = useAuth();
 

@@ -1,0 +1,80 @@
+# ==============================
+# Dependencies
+# ==============================
+node_modules/
+*/node_modules/
+
+# ==============================
+# Environment Variables (SECURITY)
+# ==============================
+.env
+.env.*
+!.env.example
+
+# ==============================
+# Build & Output Artifacts
+# ==============================
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# ==============================
+# Logs
+# ==============================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ==============================
+# OS Files
+# ==============================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ==============================
+# IDE & Editor Configs
+# ==============================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ==============================
+# AI Agent / Tooling Metadata
+# ==============================
+.agent/
+.agents/
+.antigravity-context
+.gemini/
+
+# ==============================
+# Docker (optional local data)
+# ==============================
+docker-data/
+mysql-data/
+
+# ==============================
+# Prisma
+# ==============================
+prisma/*.db
+prisma/*.db-journal
+
+# ==============================
+# Coverage & Testing
+# ==============================
+coverage/
+.nyc_output/
+
+# ==============================
+# Misc
+# ==============================
+*.pid
+*.seed
+*.pid.lock

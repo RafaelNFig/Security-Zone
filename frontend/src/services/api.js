@@ -101,6 +101,11 @@ async function apiRequest(endpoint, options = {}) {
         if (typeof authUtils?.clearAuthData === "function") {
           authUtils.clearAuthData();
         }
+        
+        // Dispara evento reativo para que App.jsx capture e force redirecionamento sem depender só de reload.
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("auth:unauthorized"));
+        }
       }
 
       return { success: false, error: msg, status: response.status, data };

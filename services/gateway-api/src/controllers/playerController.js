@@ -4,6 +4,7 @@
 import prisma from "../prismaClient.js";
 import bcrypt from "bcrypt";
 import { generateToken } from "../utils/jwtUtils.js";
+import { provisionNewPlayer } from "../services/newPlayerProvisioningService.js";
 
 const saltRounds = 10;
 
@@ -157,6 +158,11 @@ export const registerPlayer = async (req, res) => {
     const playerResponse = formatPlayerResponse(newPlayer);
 
     console.log(`✅ Novo jogador registrado: ${newPlayer.PL_NAME} (${newPlayer.PL_ID})`);
+
+    // Provisiona inventário + decks iniciais (fire-and-forget para não atrasar resposta)
+    provisionNewPlayer(newPlayer.PL_ID).catch((err) => {
+      console.error(`❌ [Provisioning] Falha ao provisionar player ${newPlayer.PL_ID}:`, err);
+    });
 
     return res.status(201).json({
       success: true,

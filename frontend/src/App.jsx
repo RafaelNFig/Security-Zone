@@ -109,6 +109,17 @@ function CreateBotMatchAndRedirect() {
 }
 
 function App() {
+  useEffect(() => {
+    const handleAuthError = () => {
+      // Força o redirecionamento imediato e recarrega os contextos, passando motivo para aviso.
+      if (!window.location.pathname.includes("/login")) {
+        window.location.href = "/login?reason=expired";
+      }
+    };
+    window.addEventListener("auth:unauthorized", handleAuthError);
+    return () => window.removeEventListener("auth:unauthorized", handleAuthError);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <Routes>
