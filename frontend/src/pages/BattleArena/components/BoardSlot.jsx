@@ -17,6 +17,7 @@ export default function BoardSlot({
   locked = false,
   disabledPrimary = false,
   disabledSecondary = false,
+  boardAction = null,
 }) {
   const showAccept = dragging && canAccept;
 
@@ -64,7 +65,11 @@ export default function BoardSlot({
         e.preventDefault();
         onHover?.();
       }}
-      onDragEnter={() => !locked && onHover?.()}
+      onDragEnter={(e) => {
+        if (locked) return;
+        e.preventDefault();
+        onHover?.();
+      }}
       onDragLeave={() => !locked && onLeave?.()}
       onDrop={(e) => {
         if (locked) return;
@@ -109,6 +114,17 @@ export default function BoardSlot({
             </div>
           </motion.div>
         )}
+
+        {boardAction?.type === "ABILITY" && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: -45 }}
+            exit={{ opacity: 0 }}
+            className="absolute z-[60] top-0 left-1/2 -translate-x-1/2 bg-black/85 text-white px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold whitespace-nowrap border-2 border-emerald-500/50 shadow-[0_10px_30px_rgba(16,185,129,0.4)]"
+          >
+            Usou {boardAction.name}
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {!card ? (
@@ -122,8 +138,16 @@ export default function BoardSlot({
         <motion.div
           className="relative w-full h-full p-3"
           initial={{ opacity: 0, scale: 0.98, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 260, damping: 22 }}
+          animate={{
+             opacity: 1, 
+             scale: boardAction?.type === "ATTACK" ? 1.05 : 1, 
+             y: boardAction?.type === "ATTACK" ? (locked ? 80 : -80) : 0 
+          }}
+          transition={
+            boardAction?.type === "ATTACK"
+              ? { type: "spring", stiffness: 400, damping: 15 }
+              : { type: "spring", stiffness: 260, damping: 22 }
+          }
         >
           <div className="w-full h-full rounded-2xl border border-white/15 bg-black/50 overflow-hidden flex relative">
             

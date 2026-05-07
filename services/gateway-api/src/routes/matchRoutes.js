@@ -6,6 +6,7 @@ import {
   createMatch,
   getMatch,
   postAction,
+  botPlay,
   health,
 } from "../controllers/matchProxyController.js";
 
@@ -49,5 +50,6 @@ router.get("/match-service/health", authMiddleware, health);
 router.post("/matches", authMiddleware, createMatch);
 router.get("/matches/:id", authMiddleware, getMatch);
 router.post("/matches/:id/actions", authMiddleware, postAction);
+router.post("/matches/:id/bot-play", authMiddleware, botPlay);
 
 export default router;

@@ -326,6 +326,7 @@ const cardsData = [
     CD_HABILITY:
       "Debuff –10 Ataque inimigo ou buff +10 Ataque aliado até o fim do próximo turno.",
     CD_TYPE: "SPELL",
+    CD_SPELL_KEY: "SOFTWARE_MALICIOSO",
     CD_COST: 3,
     CD_LIFE: null,
     CD_ATTACK: null,
@@ -342,6 +343,7 @@ const cardsData = [
     CD_NAME: "Atualização de Software",
     CD_HABILITY: "Bloqueie um ataque ou redirecione para outra carta válida.",
     CD_TYPE: "SPELL",
+    CD_SPELL_KEY: "ATUALIZACAO_SOFTWARE",
     CD_COST: 4,
     CD_LIFE: null,
     CD_ATTACK: null,
@@ -358,6 +360,7 @@ const cardsData = [
     CD_NAME: "Escudo Digital",
     CD_HABILITY: "Cure 30 de Vida de uma carta aliada e conceda +10 Defesa até o fim da rodada.",
     CD_TYPE: "SPELL",
+    CD_SPELL_KEY: "ESCUDO_DIGITAL",
     CD_COST: 2,
     CD_LIFE: null,
     CD_ATTACK: null,
@@ -374,6 +377,7 @@ const cardsData = [
     CD_NAME: "Logs de Auditoria",
     CD_HABILITY: "Revele a próxima carta do oponente; se for Ataque, ela custa +1 Energia neste turno.",
     CD_TYPE: "SPELL",
+    CD_SPELL_KEY: "LOGS_AUDITORIA",
     CD_COST: 3,
     CD_LIFE: null,
     CD_ATTACK: null,
@@ -391,6 +395,7 @@ const cardsData = [
     CD_HABILITY:
       "Restaure 1 carta da Zona de Exclusão: campo com 20% da Vida (custo 2) ou mão com Vida cheia revelada (custo 3).",
     CD_TYPE: "SPELL",
+    CD_SPELL_KEY: "BACKUP_SEGURO",
     CD_COST: 5,
     CD_LIFE: null,
     CD_ATTACK: null,
@@ -438,6 +443,7 @@ export async function seedCards() {
       CD_HAS_ABILITY: card.CD_HAS_ABILITY ?? false,
       CD_ABILITY_COST: card.CD_ABILITY_COST ?? undefined,
       CD_ABILITY_LIMIT_JSON: card.CD_ABILITY_LIMIT_JSON ?? undefined,
+      CD_SPELL_KEY: card.CD_SPELL_KEY ?? undefined,
     };
 
     const createdCard = await prisma.card.upsert({

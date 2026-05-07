@@ -16,54 +16,30 @@
  * 5) Senão, END_TURN
  *
  * Observações importantes:
- * - NÃO valida regras; rules-service valida.
+ * - NÃO valida regras; boardgame.io no match-service valida.
  * - Assume bot como P2 (turn.owner = "P2").
  * - Precisa receber state COMPLETO (não sanitizado).
  * - Respeita a regra do seu engine: 1 habilidade opcional por turno (turn.abilityUsed).
  * - Não tenta “forçar” targets complexos: escolhe alvos simples/seguros.
  */
 
-function isObject(v) {
-  return v !== null && typeof v === "object" && !Array.isArray(v);
-}
-
-function toUpper(v, fallback = "") {
-  return String(v ?? fallback).trim().toUpperCase();
-}
-
-function safeNum(v, fallback = 0) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : fallback;
-}
-
-function isValidSlot(s) {
-  return Number.isInteger(s) && s >= 0 && s <= 2;
-}
-
-function getBotSide() {
-  return "P2";
-}
-
-function getEnemySide(side) {
-  return side === "P1" ? "P2" : "P1";
-}
-
-function getPlayer(state, side) {
-  return isObject(state?.players?.[side]) ? state.players[side] : null;
-}
-
-function getBoard(state, side) {
-  const b = state?.board?.[side];
-  if (!Array.isArray(b)) return [null, null, null];
-  const out = b.slice(0, 3);
-  while (out.length < 3) out.push(null);
-  return out;
-}
-
-function getEnergy(state, side) {
-  const p = getPlayer(state, side);
-  return safeNum(p?.energy, 0);
-}
+import {
+  isObject,
+  toUpper,
+  safeNum,
+  isValidSlot,
+  getBotSide,
+  getEnemySide,
+  getPlayer,
+  getBoard,
+  getEnergy,
+  getUnitAttackValue,
+  getUnitDefenseValue,
+  makeEndTurn,
+  makePlayCard,
+  makeCastSpell,
+  makeAttack,
+} from "./shared/botHelpers.js";
 
 function normalizeCardInHand(raw) {
   if (!raw) return null;
@@ -113,15 +89,7 @@ function getHandCards(state, side) {
   return cards;
 }
 
-function getUnitAttackValue(unit) {
-  if (!unit || !isObject(unit)) return 0;
-  return safeNum(unit.attack ?? unit.atk ?? 0, 0);
-}
 
-function getUnitDefenseValue(unit) {
-  if (!unit || !isObject(unit)) return 0;
-  return safeNum(unit.defense ?? unit.def ?? 0, 0);
-}
 
 function freeSlots(boardArr) {
   const out = [];
@@ -409,26 +377,10 @@ function pickBestAbilityToUse(state, botSide, enemySide, energy, botBoard) {
   return best;
 }
 
-function makeEndTurn() {
-  return { type: "END_TURN", payload: {} };
-}
-
-function makePlayCard(cardId, slot) {
-  return { type: "PLAY_CARD", payload: { cardId: String(cardId), slot } };
-}
-
-function makeCastSpell(cardId, extraPayload = {}) {
-  return { type: "CAST_SPELL", payload: { cardId: String(cardId), ...extraPayload } };
-}
-
 function makeActivateAbility(slot, abilityKey) {
   const payload = { source: { slot } };
   if (abilityKey) payload.abilityKey = String(abilityKey);
   return { type: "ACTIVATE_ABILITY", payload };
-}
-
-function makeAttack(attackerSlot) {
-  return { type: "ATTACK", payload: { attackerSlot } };
 }
 
 /**
@@ -450,6 +402,7 @@ export function decideMove({ state }) {
   // mas caso chegue aqui, só end turn.
   if (Boolean(state?.turn?.hasAttacked)) return makeEndTurn();
 
+  const turnNumber = safeNum(state?.turn?.number, 1);
   const energy = getEnergy(state, botSide);
   const botBoard = getBoard(state, botSide);
   const enemyBoard = getBoard(state, enemySide);
@@ -461,22 +414,8 @@ export function decideMove({ state }) {
     return makeActivateAbility(bestAb.slot, bestAb.abilityKey);
   }
 
-  // 2) Spell antes do ataque
-  const spell = pickCastableSpell(hand, energy, state, botSide, enemySide);
-  if (spell) {
-    const extra = buildSpellPayload(spell, state, botSide, enemySide);
-    const { cardId, ...rest } = extra;
-    return makeCastSpell(spell.cardId, rest);
-  }
-
-  // 3) Ataque direto
-  const directSlot = findDirectAttack(botBoard, enemyBoard);
-  if (directSlot != null) {
-    const atk = getUnitAttackValue(botBoard[directSlot]);
-    if (atk > 0) return makeAttack(directSlot);
-  }
-
-  // 4) Jogar melhor unidade jogável se houver slot livre
+  // 2) Jogar melhor unidade jogável se houver slot livre
+  // Prioridade alta para estabelecer domínio de mesa antes de atacar/magia
   const free = freeSlots(botBoard);
   if (free.length > 0) {
     const bestUnit = pickBestPlayableUnit(hand, energy);
@@ -486,29 +425,51 @@ export function decideMove({ state }) {
     }
   }
 
-  // 5) Ataque com dano positivo
-  const posSlot = findPositiveDamageAttack(botBoard, enemyBoard);
-  if (posSlot != null) {
-    const atk = getUnitAttackValue(botBoard[posSlot]);
-    const enemy = enemyBoard[posSlot];
-    const def = enemy ? getUnitDefenseValue(enemy) : 0;
-    if (atk - def > 0) return makeAttack(posSlot);
+  // 3) Spell antes do ataque (usando a energia que sobrou)
+  const spell = pickCastableSpell(hand, energy, state, botSide, enemySide);
+  if (spell) {
+    const extra = buildSpellPayload(spell, state, botSide, enemySide);
+    const { cardId, ...rest } = extra;
+    return makeCastSpell(spell.cardId, rest);
   }
 
-  // 6) Último recurso: atacar com maior atk
-  let bestAny = null;
-  let bestAnyAtk = -Infinity;
-  for (let i = 0; i < 3; i += 1) {
-    const my = botBoard[i];
-    if (!my) continue;
-    const atk = getUnitAttackValue(my);
-    if (atk > bestAnyAtk) {
-      bestAnyAtk = atk;
-      bestAny = i;
+  // 4) Combate (Apenas se não for o turno 1)
+  if (turnNumber > 1) {
+    // 4.1) Ataque direto
+    const directSlot = findDirectAttack(botBoard, enemyBoard);
+    if (directSlot != null) {
+      const atk = getUnitAttackValue(botBoard[directSlot]);
+      if (atk > 0) return makeAttack(directSlot);
+    }
+
+    // 4.2) Ataque com dano positivo
+    const posSlot = findPositiveDamageAttack(botBoard, enemyBoard);
+    if (posSlot != null) {
+      const atk = getUnitAttackValue(botBoard[posSlot]);
+      const enemy = enemyBoard[posSlot];
+      const def = enemy ? getUnitDefenseValue(enemy) : 0;
+      if (atk - def > 0) return makeAttack(posSlot);
+    }
+
+    // 4.3) Último recurso: atacar com maior atk
+    let bestAny = null;
+    let bestAnyAtk = -Infinity;
+    for (let i = 0; i < 3; i += 1) {
+      const my = botBoard[i];
+      if (!my) continue;
+      const atk = getUnitAttackValue(my);
+      if (atk > bestAnyAtk) {
+        bestAnyAtk = atk;
+        bestAny = i;
+      }
+    }
+    if (bestAny != null && bestAnyAtk > 0) {
+      console.log(`[botNormal] Decidiu atacar com o slot: ${bestAny}`);
+      return makeAttack(bestAny);
     }
   }
-  if (bestAny != null && bestAnyAtk > 0) return makeAttack(bestAny);
 
+  console.log(`[botNormal] Sem mais ações válidas. Forçando END_TURN. (Turno ${turnNumber}, Energia ${botEnergy})`);
   return makeEndTurn();
 }
 

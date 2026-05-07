@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 // hooks
+import { apiRequest } from "@/services/api.js";
 import useMatchSession from "./hooks/useMatchSession.js";
 import useActionQueue from "./hooks/useActionQueue.js";
 import useSelections from "./hooks/useSelections.js";
@@ -156,6 +157,20 @@ export default function Arena() {
   // ✅ somente TargetPicker
   const [targetModal, setTargetModal] = useState(null);
 
+  // --- ACTIONS STATE (Animações) ---
+  const [boardAction, setBoardAction] = useState(null); // { type: 'ATTACK'|'ABILITY', slot: number, name?: string }
+  const [spellAction, setSpellAction] = useState(null); // { text: string }
+
+  const triggerBoardAction = (type, globalSlot, name = "") => {
+    setBoardAction({ type, slot: globalSlot, name });
+    setTimeout(() => setBoardAction(null), type === "ATTACK" ? 800 : 2500);
+  };
+
+  const triggerSpellAction = (text) => {
+    setSpellAction({ text });
+    setTimeout(() => setSpellAction(null), 2500);
+  };
+
   const { post: postAction, isSending } = useActionQueue({
     matchId,
     onApply: (patch) => {
@@ -167,6 +182,52 @@ export default function Arena() {
         );
     },
   });
+
+  // --- BOT LOOP ---
+  const isBotMatch = toUpper(session.matchMeta?.mode) === "VSBOT" || toUpper(session.matchMeta?.mode) === "BOT";
+  useEffect(() => {
+    if (!matchId || session.isMyTurn || !isBotMatch || session.isLoading || isSending || toUpper(session.phase) === "ENDED") return;
+    
+    // É turno do bot. Agenda a jogada
+    const t = setTimeout(async () => {
+      try {
+        const res = await apiRequest(`/matches/${encodeURIComponent(matchId)}/bot-play`, {
+           method: "POST",
+           body: JSON.stringify({ difficulty: session.matchMeta?.difficulty })
+        });
+        
+        const payload = res?.data || {};
+        
+        if (res?.success && payload.botAction) {
+           const a = payload.botAction;
+           
+           if (a.type === "CAST_SPELL") {
+             // Precisaríamos do nome real do spell se estivesse no payload, senão usamos um genérico
+             triggerSpellAction("Bot ativou uma Magia");
+           } else if (a.type === "ATTACK") {
+             const globalSlot = a.payload.attackerSlot; // 0, 1, 2
+             triggerBoardAction("ATTACK", globalSlot);
+           } else if (a.type === "ACTIVATE_ABILITY") {
+             const globalSlot = a.payload.source?.slot;
+             triggerBoardAction("ABILITY", globalSlot, a.payload.abilityKey);
+           }
+           // Para PLAY_CARD, apenas atualiza a tela
+           
+           // atualiza estado local imediatamente (com as ações tomadas pelo bot)
+           if (payload.state) session.setState(payload.state);
+           if (payload.events) session.pushEvents(payload.events);
+        } else {
+           // Se der erro ou o bot não responder, passa o turno dele por segurança
+           session.setErr("Bot não conseguiu responder.");
+        }
+      } catch (err) {
+        console.error("Erro ao rodar bot", err);
+      }
+    }, 1500); // delay de 1.5s entre ações do bot
+
+    return () => clearTimeout(t);
+  }, [matchId, session.isMyTurn, isBotMatch, session.isLoading, isSending, session.phase, session.matchMeta?.difficulty]);
+  // --- FIM BOT LOOP ---
 
   const mySide = session.viewerSide;
   const enemySide = session.enemySide;
@@ -234,6 +295,11 @@ export default function Arena() {
     if (toUpper(session.phase, "MAIN") !== "MAIN") return;
     if (localSlot < 0 || localSlot > 2) return;
 
+    if (session.turnCount === 1) {
+      session.setHint("Você não pode atacar no primeiro turno do jogo!");
+      return;
+    }
+
     if (!myBoard3?.[localSlot]) {
       session.setHint("Não há unidade nesse slot.");
       return;
@@ -241,6 +307,7 @@ export default function Arena() {
 
     try {
       session.setHint("Atacando...");
+      triggerBoardAction("ATTACK", localSlot + 3); // Player slot
       await postAction({
         type: "ATTACK",
         payload: { attackerSlot: localSlot },
@@ -266,6 +333,9 @@ export default function Arena() {
 
     try {
       session.setHint("Conjurando...");
+      const cardName = payload.cardId ? "Magia" : "uma Magia"; // Idealmente puxar o nome se tivéssemos o obj inteiro
+      triggerSpellAction(`Jogador ativou ${cardName}`);
+      
       await postAction({ type: "CAST_SPELL", payload });
       selections.clearDrag();
       session.setHint("Magia aplicada.");
@@ -293,6 +363,7 @@ export default function Arena() {
 
     try {
       session.setHint("Ativando habilidade...");
+      triggerBoardAction("ABILITY", sourceSlot + 3, abilityKey);
       await postAction({
         type: "ACTIVATE_ABILITY",
         payload: {
@@ -672,6 +743,7 @@ export default function Arena() {
                         onAttackSlot={attackWithSlot}
                         onAbilitySlot={beginAbility}
                         isMyTurn={session.isMyTurn}
+                        boardAction={boardAction}
                       />
                     </div>
                   </div>
@@ -690,6 +762,21 @@ export default function Arena() {
                           TURNO ENCERRADO
                         </div>
                       </div>
+                    </motion.div>
+                  )}
+                  {spellAction && (
+                    <motion.div
+                      className="absolute z-[60] left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2"
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1.2 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ type: "spring", bounce: 0.5 }}
+                    >
+                       <div className="bg-gradient-to-r from-purple-900/80 to-blue-900/80 border-2 border-purple-400/50 rounded-2xl px-8 py-4 shadow-[0_0_50px_rgba(168,85,247,0.5)] backdrop-blur">
+                          <h2 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-200 to-cyan-200 uppercase tracking-widest text-center">
+                             {spellAction.text}
+                          </h2>
+                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>

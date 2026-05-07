@@ -18,6 +18,7 @@ export default function Board({
   isMyTurn = false,
   phase = "MAIN",
   turnMeta = null,
+  boardAction = null,
 }) {
   const isMain = toUpper(phase, "MAIN") === "MAIN";
   const hasAttacked = Boolean(turnMeta?.hasAttacked);
@@ -46,6 +47,7 @@ export default function Board({
             onPrimary={() => {}}
             statsPosition="top"
             locked
+            boardAction={boardAction?.slot === idx ? boardAction : null}
           />
         ))}
       </div>
@@ -71,6 +73,7 @@ export default function Board({
             locked={false}
             disabledPrimary={!canUsePrimary}
             disabledSecondary={!canUseAbility}
+            boardAction={boardAction?.slot === idx ? boardAction : null}
           />
         ))}
       </div>

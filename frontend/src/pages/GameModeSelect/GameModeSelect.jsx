@@ -128,15 +128,18 @@ export default function GameModeSelect() {
   };
 
   /**
-   * ✅ cria match BOT no endpoint correto: POST /matches
-   * (mesmo padrão do teu App.jsx)
+   * Dispara a requisição para criar partida BOT no backend.
+   * @param {Object} params 
+   * @param {string} params.deckId - ID do deck selecionado.
+   * @param {string} params.difficulty - Dificuldade do bot (easy/normal).
+   * @returns {Promise<{ matchId: string, data: any }>}
    */
   const createBotMatch = async ({ deckId, difficulty }) => {
     const payload = {
       mode: "vsBot",
-      difficulty, // "easy" | "normal"
+      difficulty,
       deckId,
-      playerId, // ajuda backend se ele precisar
+      playerId,
     };
 
     const res = await apiRequest("/matches", {
@@ -145,6 +148,9 @@ export default function GameModeSelect() {
     });
 
     if (!res?.success) {
+      if (res?.status === 502) {
+        throw new Error("O servidor do jogo (Match-Service) está indisponível ou reiniciando (Erro 502).");
+      }
       throw new Error(res?.error || "Erro ao criar partida contra bot.");
     }
 
@@ -158,6 +164,13 @@ export default function GameModeSelect() {
     return { matchId, data };
   };
 
+  /**
+   * Handler principal quando o usuário confirma o Bot no Modal.
+   * 1. Validações Locais
+   * 2. Ativa o deck na API
+   * 3. Cria a partida e recebe o Estado Inicial
+   * 4. Redireciona para /battle/:matchId
+   */
   const handleBotChosen = async (bot) => {
     const difficulty = String(bot?.id || "").toLowerCase();
     const deckId = selectedDeckId;
@@ -165,29 +178,23 @@ export default function GameModeSelect() {
     setShowBotModal(false);
     setError(null);
 
+    // Validações isoladas
     if (!playerId) {
-      setError("Seu usuário ainda não carregou corretamente (playerId ausente). Faça login novamente.");
-      return;
+      return setError("Sessão inválida. Faça login novamente.");
     }
-    if (!deckId || !isDeckValid) {
-      setError("Selecione um deck válido (com cartas) antes de iniciar.");
-      return;
+    if (!isDeckValid || !deckId) {
+      return setError("Selecione um deck válido antes de iniciar.");
     }
     if (!["easy", "normal"].includes(difficulty)) {
-      setError("Bot inválido. Use easy ou normal.");
-      return;
+      return setError("Bot inválido. Tente novamente.");
     }
 
     try {
       setLoadingAction(true);
 
-      // ✅ 1) ativa deck selecionado
       await activateDeckIfNeeded(deckId);
-
-      // ✅ 2) cria match BOT
       const { matchId, data } = await createBotMatch({ deckId, difficulty });
 
-      // ✅ 3) redireciona para a partida
       navigate(`/battle/${encodeURIComponent(matchId)}`, {
         replace: true,
         state: {
@@ -200,7 +207,7 @@ export default function GameModeSelect() {
         },
       });
     } catch (e) {
-      setError(e?.message || "Erro ao iniciar partida contra bot");
+      setError(e?.message || "Ocorreu um erro ao processar a partida.");
     } finally {
       setLoadingAction(false);
     }

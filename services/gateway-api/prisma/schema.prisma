@@ -112,6 +112,10 @@ model Card {
   // { "kind":"SPLIT_DAMAGE", "maxTargets":2 }
   CD_EFFECT_JSON Json? @map("CD_EFFECT_JSON")
 
+  // ✅ IDENTIFICADOR RÍGIDO DE MAGIA (Ação 4.2)
+  // Utilizado pelo game-engine para aplicar a lógica exata de cada magia via registry.
+  CD_SPELL_KEY String? @map("CD_SPELL_KEY") @db.VarChar(50)
+
   // Flags opcionais que ajudam na engine (sem depender só do JSON)
   CD_HAS_ABILITY        Boolean @default(false) @map("CD_HAS_ABILITY") // unidade tem habilidade ativa?
   CD_ABILITY_COST       Int?    @map("CD_ABILITY_COST") // 0-3 (0=passiva)

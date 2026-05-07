@@ -3,49 +3,28 @@
  * Bot EASY (heurística simples):
 
  * Observações:
- * - Quem valida regras é o rules-service.
+ * - Quem valida regras é o boardgame.io no match-service.
  * - Bot NÃO usa ACTIVATE_ABILITY (habilidades opcionais) — apenas joga UNIT, usa SPELL e ataca.
  * - Assume bot jogando como P2 (turn.owner="P2").
  * - match-service deve enviar state COMPLETO (não sanitizado) pro bot.
  */
 
-function isObject(v) {
-  return v !== null && typeof v === "object" && !Array.isArray(v);
-}
-
-function toUpper(v, fallback = "") {
-  return String(v ?? fallback).trim().toUpperCase();
-}
-
-function safeNum(v, fallback = 0) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : fallback;
-}
-
-function getBotSide() {
-  return "P2";
-}
-
-function getEnemySide(side) {
-  return side === "P1" ? "P2" : "P1";
-}
-
-function getPlayer(state, side) {
-  return isObject(state?.players?.[side]) ? state.players[side] : null;
-}
-
-function getBoard(state, side) {
-  const b = state?.board?.[side];
-  if (!Array.isArray(b)) return [null, null, null];
-  const out = b.slice(0, 3);
-  while (out.length < 3) out.push(null);
-  return out;
-}
-
-function getEnergy(state, side) {
-  const p = getPlayer(state, side);
-  return safeNum(p?.energy, 0);
-}
+import {
+  isObject,
+  toUpper,
+  safeNum,
+  getBotSide,
+  getEnemySide,
+  getPlayer,
+  getBoard,
+  getEnergy,
+  getUnitAttackValue,
+  getUnitDefenseValue,
+  makeEndTurn,
+  makePlayCard,
+  makeCastSpell,
+  makeAttack,
+} from "./shared/botHelpers.js";
 
 function normalizeCardInHand(raw) {
   // Normal esperado: { cardId, type, cost, effect? }
@@ -120,17 +99,7 @@ function pickPlayableUnit(handCards, energy) {
   return candidates[0];
 }
 
-function getUnitAttackValue(unit) {
-  if (!unit) return 0;
-  if (isObject(unit)) return safeNum(unit.attack ?? unit.atk ?? 0, 0);
-  return 0;
-}
 
-function getUnitDefenseValue(unit) {
-  if (!unit) return 0;
-  if (isObject(unit)) return safeNum(unit.defense ?? unit.def ?? 0, 0);
-  return 0;
-}
 
 function pickBestAttackSlot(botBoard, enemyBoard) {
   // Heurística:
@@ -168,7 +137,7 @@ function pickBestAttackSlot(botBoard, enemyBoard) {
     }
 
     const enemyDef = getUnitDefenseValue(enemyUnit);
-    const dmg = myAtk - enemyDef; // regra do rules-service
+    const dmg = myAtk - enemyDef; // Regra de dano do engine
     if (dmg > 0 && dmg > bestAdvScore) {
       bestAdvScore = dmg;
       bestAdv = i;
@@ -283,21 +252,7 @@ function buildSpellPayload(card, state, botSide, enemySide) {
   return base;
 }
 
-function makeEndTurn() {
-  return { type: "END_TURN", payload: {} };
-}
 
-function makePlayCard(cardId, slot) {
-  return { type: "PLAY_CARD", payload: { cardId: String(cardId), slot } };
-}
-
-function makeCastSpell(cardId, extraPayload = {}) {
-  return { type: "CAST_SPELL", payload: { cardId: String(cardId), ...extraPayload } };
-}
-
-function makeAttack(attackerSlot) {
-  return { type: "ATTACK", payload: { attackerSlot } };
-}
 
 /**
  * API principal do bot easy.
@@ -317,6 +272,7 @@ export function decideMove({ state }) {
   if (phase !== "MAIN") return makeEndTurn();
 
   const hasAttacked = Boolean(state?.turn?.hasAttacked);
+  const turnNumber = safeNum(state?.turn?.number, 1);
   const botEnergy = getEnergy(state, botSide);
 
   const botBoard = getBoard(state, botSide);
@@ -324,29 +280,38 @@ export function decideMove({ state }) {
 
   const hand = getHandCards(state, botSide);
 
-  // 0) Se ainda não atacou, tenta usar 1 SPELL antes (bot easy não usa habilidades)
+  // 1) Jogar UNIT se houver slot livre e energia suficiente (Prioridade MÁXIMA do Easy)
+  const freeSlot = pickSlotForPlay(botBoard);
+  if (freeSlot != null) {
+    const unit = pickPlayableUnit(hand, botEnergy);
+    if (unit) {
+      console.log(`[botEasy] Decidiu invocar unidade: ${unit.cardId} no slot ${freeSlot}`);
+      return makePlayCard(unit.cardId, freeSlot);
+    }
+  }
+
+  // 2) Se não pode mais jogar unidades (sem energia ou sem espaço), tenta jogar um SPELL com a energia restante
   if (!hasAttacked) {
     const spell = pickCastableSpell(hand, botEnergy, state, botSide, enemySide);
     if (spell) {
       const extra = buildSpellPayload(spell, state, botSide, enemySide);
-      // extra já contém cardId; makeCastSpell também, então removemos duplicação:
       const { cardId, ...rest } = extra;
+      console.log(`[botEasy] Decidiu castar magia: ${spell.cardId}`);
       return makeCastSpell(spell.cardId, rest);
     }
   }
 
-  // 1) Jogar UNIT se houver slot livre e energia suficiente
-  const freeSlot = pickSlotForPlay(botBoard);
-  if (freeSlot != null) {
-    const unit = pickPlayableUnit(hand, botEnergy);
-    if (unit) return makePlayCard(unit.cardId, freeSlot);
+  // 3) Atacar (Se não for turno 1, pois atacar encerra o turno e não pode atacar no T1)
+  if (turnNumber > 1 && !hasAttacked) {
+    const attackSlot = pickBestAttackSlot(botBoard, enemyBoard);
+    if (attackSlot != null) {
+      console.log(`[botEasy] Decidiu atacar com o slot: ${attackSlot}`);
+      return makeAttack(attackSlot);
+    }
   }
 
-  // 2) Atacar
-  const attackSlot = pickBestAttackSlot(botBoard, enemyBoard);
-  if (attackSlot != null) return makeAttack(attackSlot);
-
-  // 3) Nada
+  // 4) Nada mais a fazer, encerra o turno
+  console.log(`[botEasy] Sem mais ações válidas. Forçando END_TURN. (Turno ${turnNumber}, Energia ${botEnergy})`);
   return makeEndTurn();
 }
 

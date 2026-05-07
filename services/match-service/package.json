@@ -2,19 +2,25 @@
   "name": "match-service",
   "version": "1.0.0",
   "description": "Match Service - Orquestrador/stateful - SecurityZone Card Game",
-  "type": "module",
-  "main": "src/server.js",
+  "main": "src/bgio-server.js",
   "scripts": {
-    "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "dev": "nodemon --watch src --watch ../../shared/game-engine src/bgio-server.js",
+    "start": "node src/bgio-server.js"
   },
   "dependencies": {
+    "@security-zone/game-engine": "file:../../shared/game-engine",
     "axios": "^1.7.9",
+    "boardgame.io": "^0.50.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"
+  },
+  "overrides": {
+    "http-errors": {
+      "statuses": "2.0.2"
+    }
   }
 }

@@ -8,7 +8,7 @@ function toUpper(v, fb = "") {
 
 /**
  * ActionBar
- * - UI + bloqueios coerentes com regras do rules-service
+ * - UI + bloqueios coerentes com regras do boardgame.io
  * - Não executa regras, só reflete estado e trava botões corretamente.
  */
 export default function ActionBar({

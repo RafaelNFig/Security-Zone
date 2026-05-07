@@ -3,7 +3,7 @@
  * Bot Controller
  * - Recebe { state, difficulty }
  * - Decide qual bot usar (easy/normal/hard)
- * - Retorna action no formato compatível com match-service/rules-service:
+ * - Retorna action no formato compatível com boardgame.io via match-service:
  *
  * Compatibilidade:
  * - bots podem retornar: PLAY_CARD, CAST_SPELL, ACTIVATE_ABILITY, ATTACK, END_TURN

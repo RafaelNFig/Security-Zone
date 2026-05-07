@@ -22,11 +22,20 @@ const MATCH_SERVICE_URL = (
   process.env.MATCH_SERVICE_URL || "http://match-service:3001"
 ).replace(/\/$/, "");
 
+const BOT_SERVICE_URL = (
+  process.env.BOT_SERVICE_URL || "http://bot-service:3003"
+).replace(/\/$/, "");
+
 const HTTP_TIMEOUT_MS = Number(process.env.MATCH_PROXY_TIMEOUT_MS || 12_000);
 
 const http = createHttpClient({
   baseURL: MATCH_SERVICE_URL,
   timeoutMs: HTTP_TIMEOUT_MS,
+});
+
+const botHttp = createHttpClient({
+  baseURL: BOT_SERVICE_URL,
+  timeoutMs: 15_000, // Timeout maior se o bot for complexo
 });
 
 // Bots seeded (mesma convenção do seedUsersBotsDecks.js)
@@ -52,7 +61,7 @@ function normalizeDifficulty(raw) {
 function inferIsBotMatch(body) {
   // tolerante: aceita campos diferentes vindos do front
   const mode = String(body?.mode ?? body?.MT_MODE ?? body?.matchMode ?? "").toUpperCase();
-  if (mode === "BOT") return true;
+  if (mode === "BOT" || mode === "VSBOT") return true;
 
   // fallback: se tem difficulty/botLevel, consideramos BOT
   if (body?.difficulty || body?.botLevel || body?.level) return true;
@@ -143,12 +152,25 @@ export async function createMatch(req, res) {
 
         const botDeckCards = botDeck.cardsInDeck.map((x) => ({
           quantity: x.DECK_CD_QUANTITY,
-          card: x.card,
+          ...x.card,
         }));
+
+        // Buscar deck do P1 (jogador humano) para injetar no payload também
+        const p1Id = req?.player?.PL_ID ?? req?.user?.playerId ?? body.playerId;
+        let p1DeckCards = [];
+        if (p1Id) {
+           const p1Deck = await fetchActiveDeckWithCards(p1Id);
+           if (p1Deck && p1Deck.cardsInDeck) {
+             p1DeckCards = p1Deck.cardsInDeck.map((x) => ({
+               quantity: x.DECK_CD_QUANTITY,
+               ...x.card,
+             }));
+           }
+        }
 
         payload = {
           ...payload,
-          mode: "BOT",
+          mode: "VSBOT", // Força o modo de forma reconhecível
           difficulty,
           bot: {
             level: difficulty,
@@ -157,6 +179,7 @@ export async function createMatch(req, res) {
             deckName: botDeck.DECK_NAME,
           },
           botDeckCards,
+          p1DeckCards,
         };
       }
     }
@@ -235,6 +258,79 @@ export async function postAction(req, res) {
     return sendOk(req, res, r, 200);
   } catch (err) {
     return replyWithHttpError(res, err, { publicError: "MATCH_SERVICE_UNREACHABLE" });
+  }
+}
+
+/**
+ * POST /api/matches/:id/bot-play
+ * Pede pro bot decidir uma ação baseada no estado atual e aplica no match-service.
+ */
+export async function botPlay(req, res) {
+  const headers = buildServiceHeaders(req);
+  const { id } = req.params;
+
+  try {
+    // 1) Busca o estado atual no match-service (flag internal para não censurar a mão do bot)
+    const matchRes = await http.get(`/matches/${encodeURIComponent(id)}?internal=true`, { headers });
+    if (matchRes.status >= 400 || !matchRes.data?.state) {
+      return res.status(500).json({ success: false, error: "FAILED_TO_GET_STATE" });
+    }
+    
+    const state = matchRes.data.state;
+    // Puxa a dificuldade do bot caso esteja no state (salvamos no hook ou extraimos do param)
+    // Opcionalmente o frontend pode mandar a difficulty no body
+    const difficulty = req.body?.difficulty || "easy";
+
+    // 2) Pede a jogada para o bot-service
+    const botReqPayload = { state, difficulty };
+    const botRes = await botHttp.post("/move", botReqPayload);
+    
+    if (botRes.status >= 400 || !botRes.data) {
+       return res.status(500).json({ success: false, error: "BOT_SERVICE_FAILED" });
+    }
+
+    const botAction = botRes.data;
+
+    // 3) Se o bot mandou action, despacha para o match-service
+    // action.type e action.payload
+    const actionPayload = {
+       action: botAction,
+       clientActionId: `bot_${Date.now()}`
+    };
+
+    const actionRes = await http.post(`/matches/${encodeURIComponent(id)}/actions`, actionPayload, { headers });
+
+    if (actionRes.status >= 400) {
+       return replyWithHttpError(res, actionRes, { publicError: "MATCH_SERVICE_ERROR" });
+    }
+
+    // Se o bot fez um movimento inválido, forçamos ele a passar o turno para não gerar loop infinito
+    if (actionRes.data?.rejected) {
+       console.log(`[botPlay] Bot tentou ação inválida (${botAction.type}), forçando END_TURN.`);
+       const fallbackRes = await http.post(`/matches/${encodeURIComponent(id)}/actions`, {
+           action: { type: "END_TURN", payload: {} },
+           clientActionId: `bot_fallback_${Date.now()}`
+       }, { headers });
+       
+       return res.status(200).json({
+          success: true,
+          botAction: { type: "END_TURN", payload: {}, meta: { reason: "INVALID_BOT_MOVE_FALLBACK" } },
+          state: fallbackRes.data?.state,
+          events: fallbackRes.data?.events
+       });
+    }
+
+    // 4) Retorna ao cliente a ação decidida e o novo estado
+    return res.status(200).json({
+       success: true,
+       botAction,
+       state: actionRes.data?.state,
+       events: actionRes.data?.events
+    });
+
+  } catch (err) {
+    console.error("[botPlay] Error:", err);
+    return res.status(500).json({ success: false, error: "BOT_PLAY_ERROR" });
   }
 }
 

@@ -7,6 +7,8 @@ networks:
 volumes:
   mysql_data:
   frontend_node_modules:
+  match_node_modules:
+  shared_node_modules:
 
 services:
   # =========================================================
@@ -94,8 +96,8 @@ services:
   match-service:
     container_name: security-zone-match
     build:
-      context: ./services/match-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/match-service/Dockerfile
     env_file:
       - ./services/match-service/.env
     environment:
@@ -103,32 +105,16 @@ services:
       HOST: 0.0.0.0
       PORT: 3001
 
-      RULES_SERVICE_URL: http://rules-service:3002
       BOT_SERVICE_URL: http://bot-service:3003
 
       GATEWAY_URL: http://gateway-api:3000
     expose:
       - "3001"
-    restart: unless-stopped
-    networks:
-      - sz_net
-
-  # =========================================================
-  # 5) RULES SERVICE (porta interna 3002)
-  # =========================================================
-  rules-service:
-    container_name: security-zone-rules
-    build:
-      context: ./services/rules-service
-      dockerfile: Dockerfile
-    env_file:
-      - ./services/rules-service/.env
-    environment:
-      NODE_ENV: development
-      HOST: 0.0.0.0
-      PORT: 3002
-    expose:
-      - "3002"
+    volumes:
+      - ./services/match-service:/app/services/match-service
+      - ./shared:/app/shared
+      - match_node_modules:/app/services/match-service/node_modules
+      - shared_node_modules:/app/shared/game-engine/node_modules
     restart: unless-stopped
     networks:
       - sz_net
@@ -195,7 +181,6 @@ services:
       - frontend
       - gateway-api
       - match-service
-      - rules-service
       - bot-service
     ports:
       - "80:80"

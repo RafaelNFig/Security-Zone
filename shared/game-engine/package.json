@@ -1,0 +1,17 @@
+{
+  "name": "@security-zone/game-engine",
+  "version": "1.0.0",
+  "description": "Boardgame.io Game Logic and Rules Engine",
+  "main": "index.cjs",
+  "module": "src/Game.js",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./src/Game.js",
+      "require": "./index.cjs"
+    }
+  },
+  "dependencies": {
+    "boardgame.io": "^0.50.2"
+  }
+}
